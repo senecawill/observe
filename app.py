@@ -42,7 +42,7 @@ def build_file_tree(root):
                 if entry.name.lower().endswith(".md"):
                     tree.append({
                         "type": "file",
-                        "name": entry.name,  # Keep real name here
+                        "name": entry.name,
                         "path": os.path.relpath(entry.path, CONTENT_ROOT)
                     })
     return tree
@@ -132,15 +132,15 @@ def index():
     - Search results are collapsible
     - Clicking a search result highlights the match
     - Title is added above each rendered document, with an extra <br> after
-    - A 'Clear' button removes the search results
-    - Long filenames/paths are wrapped in the accordion
+    - The Clear button has no text, uses the same styling as the search button,
+      and is placed next to the search button.
     """
     html_template = """
     <!DOCTYPE html>
     <html>
     <head>
         <meta charset="utf-8">
-        <title>Obsidian Markdown Server (PoC)</title>
+        <title>Martime Tactical Systems</title>
         <!-- Bootstrap CSS -->
         <link 
           href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" 
@@ -193,11 +193,10 @@ def index():
             #searchAccordion a:hover {
                 text-decoration: underline;
             }
-
-            /* NEW: Wrap long text in the accordion headers */
+            /* Wrap long text in the accordion headers */
             .accordion-button {
                 white-space: normal;
-                overflow-wrap: anywhere; /* or 'break-word' if preferred */
+                overflow-wrap: anywhere;
             }
         </style>
     </head>
@@ -206,7 +205,7 @@ def index():
         <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
             <div class="container-fluid">
                 <a class="navbar-brand" href="#">
-                    <i class="bi bi-journal-text"></i> Obsidian Markdown Server
+                    <i class="bi bi-journal-text"></i> Martime Tactical Systems
                 </a>
             </div>
         </nav>
@@ -226,6 +225,7 @@ def index():
                               aria-describedby="search-btn" 
                               id="searchBox"
                             >
+                            <!-- SEARCH BUTTON -->
                             <button 
                               class="btn btn-primary" 
                               type="button" 
@@ -234,11 +234,13 @@ def index():
                             >
                                 <i class="bi bi-search"></i>
                             </button>
-                        </div>
-                        <!-- NEW CLEAR BUTTON -->
-                        <div class="d-flex justify-content-end mb-3">
-                            <button class="btn btn-secondary" type="button" onclick="clearSearchResults()">
-                                <i class="bi bi-x-circle"></i> Clear
+                            <!-- CLEAR BUTTON: same styling, no text, next to search icon -->
+                            <button 
+                              class="btn btn-primary" 
+                              type="button" 
+                              onclick="clearSearchResults()"
+                            >
+                                <i class="bi bi-x-circle"></i>
                             </button>
                         </div>
 
