@@ -21,10 +21,16 @@ def build_file_tree(root):
     """
     Recursively build a nested list structure representing
     the folder/file hierarchy under 'root'.
+    Skip the '.obsidian' directory.
     """
     tree = []
     with os.scandir(root) as it:
+        # Sort so directories come first, then files, alphabetically
         for entry in sorted(it, key=lambda e: (not e.is_dir(), e.name.lower())):
+            # Skip .obsidian
+            if entry.is_dir() and entry.name == ".obsidian":
+                continue
+
             if entry.is_dir():
                 subtree = build_file_tree(entry.path)
                 tree.append({
@@ -37,7 +43,7 @@ def build_file_tree(root):
                 if entry.name.lower().endswith(".md"):
                     tree.append({
                         "type": "file",
-                        "name": entry.name,
+                        "name": entry.name,  # Keep real name here
                         "path": os.path.relpath(entry.path, CONTENT_ROOT)
                     })
     return tree
@@ -45,10 +51,14 @@ def build_file_tree(root):
 def cache_files(root):
     """
     Recursively scan the root directory for .md files and cache their content.
-    Returns a dict { relative_path: file_content }.
+    Skip the '.obsidian' directory so it doesn't appear in search results.
     """
     cache = {}
-    for dirpath, _, filenames in os.walk(root):
+    # Use os.walk but remove .obsidian from dirnames
+    for dirpath, dirnames, filenames in os.walk(root):
+        if ".obsidian" in dirnames:
+            dirnames.remove(".obsidian")  # skip traversal into .obsidian
+
         for filename in filenames:
             if filename.lower().endswith(".md"):
                 full_path = os.path.join(dirpath, filename)
@@ -96,6 +106,15 @@ def search_in_files(query, cache):
             })
     return results
 
+def strip_md_extension(filename):
+    """
+    Return the filename with .md removed, if present.
+    Example: 'Notes.md' -> 'Notes'
+    """
+    if filename.lower().endswith(".md"):
+        return filename[:-3]
+    return filename
+
 # -------------------------------------------------------------------
 # Precompute the file tree and content cache on startup
 # -------------------------------------------------------------------
@@ -112,8 +131,11 @@ def init_data():
 def index():
     """
     Serve a Bootstrap-based page that calls our API endpoints
-    and displays a professional-looking interface with clickable
-    search results that jump to the highlighted match.
+    and displays a professional-looking interface.
+    - File list hides '.md'
+    - Search results are collapsible
+    - Clicking a search result highlights the match
+    - Title is added above each rendered document
     """
     html_template = """
     <!DOCTYPE html>
@@ -209,7 +231,8 @@ def index():
                                 <i class="bi bi-search"></i>
                             </button>
                         </div>
-                        <div id="searchResults" class="mb-3"></div>
+                        <!-- Accordion for search results -->
+                        <div class="accordion mb-3" id="searchAccordion"></div>
                         <hr>
                         <ul class="file-tree" id="fileTree"></ul>
                     </div>
@@ -228,6 +251,22 @@ def index():
         </script>
 
         <script>
+            // ---------------------------
+            //  UTILS
+            // ---------------------------
+            function stripMdExtension(filename) {
+                return filename.replace(/\.md$/i, "");
+            }
+
+            // For display in search results (path minus .md on last segment)
+            function displayPath(path) {
+                const parts = path.split("/");
+                const fileName = parts.pop();
+                const stripped = stripMdExtension(fileName);
+                parts.push(stripped);
+                return parts.join("/");
+            }
+
             // ---------------------------
             //  Fetch and build the tree
             // ---------------------------
@@ -251,7 +290,7 @@ def index():
 
                         // Directory name
                         const dirName = document.createElement("span");
-                        dirName.textContent = node.name;
+                        dirName.textContent = node.name;  // Keep original folder name
                         dirName.className = "directory-toggle fw-bold";
 
                         // Children container
@@ -282,7 +321,8 @@ def index():
                         icon.className = "bi bi-file-earmark-text me-1 text-secondary";
                         
                         const fileEl = document.createElement("span");
-                        fileEl.textContent = node.name;
+                        // Hide .md extension for display
+                        fileEl.textContent = stripMdExtension(node.name);
                         fileEl.className = "file-item";
                         fileEl.onclick = () => loadFile(node.path);
 
@@ -303,7 +343,10 @@ def index():
                 if(data.error) {
                     contentDiv.innerHTML = "<p class='text-danger'>" + data.error + "</p>";
                 } else {
-                    contentDiv.innerHTML = data.html;
+                    // Add an H3 title using the file name (minus .md)
+                    const baseName = filePath.split("/").pop();
+                    const displayName = stripMdExtension(baseName);
+                    contentDiv.innerHTML = "<h3>" + displayName + "</h3>" + data.html;
                 }
             }
 
@@ -321,7 +364,11 @@ def index():
                 if (data.error) {
                     contentDiv.innerHTML = "<p class='text-danger'>" + data.error + "</p>";
                 } else {
-                    contentDiv.innerHTML = data.html;
+                    // Add an H3 title using the file name (minus .md)
+                    const baseName = filePath.split("/").pop();
+                    const displayName = stripMdExtension(baseName);
+                    contentDiv.innerHTML = "<h3>" + displayName + "</h3>" + data.html;
+
                     // Attempt to scroll to the highlight
                     const highlightEl = document.getElementById("search-highlight");
                     if (highlightEl) {
@@ -331,7 +378,7 @@ def index():
             }
 
             // ---------------------------
-            //  Search
+            //  Search (collapsible results)
             // ---------------------------
             async function search() {
                 const query = document.getElementById("searchBox").value.trim();
@@ -339,27 +386,63 @@ def index():
 
                 const resp = await fetch("/api/search?q=" + encodeURIComponent(query));
                 const results = await resp.json();
-                const resultsDiv = document.getElementById("searchResults");
+                const accordion = document.getElementById("searchAccordion");
+                accordion.innerHTML = "";
+
                 if(results.length === 0) {
-                    resultsDiv.innerHTML = "<em>No matches found.</em>";
+                    accordion.innerHTML = "<em>No matches found.</em>";
                     return;
                 }
-                let html = "";
-                results.forEach(fileResult => {
-                    html += "<div class='mb-2'><strong>" + fileResult.path + "</strong></div>";
+
+                // Build a Bootstrap accordion item for each file
+                results.forEach((fileResult, index) => {
+                    const fileId = "accordionFile-" + index;
+                    const headingId = "heading-" + index;
+                    const collapseId = "collapse-" + index;
+
+                    // Display path minus .md
+                    const displayedPath = displayPath(fileResult.path);
+
+                    // Build the heading
+                    const header = `
+                      <h2 class="accordion-header" id="${headingId}">
+                        <button class="accordion-button collapsed" type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#${collapseId}"
+                                aria-expanded="false"
+                                aria-controls="${collapseId}">
+                          ${displayedPath}
+                        </button>
+                      </h2>`;
+
+                    // Build the body: snippet links
+                    let bodyContent = "";
                     fileResult.matches.forEach(match => {
-                        // Link to open file at the exact match
-                        html += `
-                            <div>
-                                <a href="#"
-                                   onclick="loadFileWithHighlight('${fileResult.path}', ${match.start}, ${match.length})">
-                                    ... ${match.snippet} ...
-                                </a>
-                            </div>`;
+                        bodyContent += `
+                          <div class="mb-2">
+                            <a href="#"
+                               onclick="loadFileWithHighlight('${fileResult.path}', ${match.start}, ${match.length})">
+                                ... ${match.snippet} ...
+                            </a>
+                          </div>`;
                     });
-                    html += "<hr>";
+
+                    const body = `
+                      <div id="${collapseId}" class="accordion-collapse collapse"
+                           aria-labelledby="${headingId}" data-bs-parent="#searchAccordion">
+                        <div class="accordion-body">
+                          ${bodyContent}
+                        </div>
+                      </div>`;
+
+                    const item = `
+                      <div class="accordion-item" id="${fileId}">
+                        ${header}
+                        ${body}
+                      </div>`;
+
+                    accordion.innerHTML += item;
                 });
-                resultsDiv.innerHTML = html;
             }
 
             // Initial load
@@ -396,6 +479,7 @@ def api_file():
         return jsonify({"error": f"File '{rel_path}' not found."})
 
     content = file_cache[rel_path]
+    # Convert markdown to HTML
     html_content = markdown.markdown(content, extensions=["fenced_code", "tables"])
     return jsonify({"html": html_content})
 
