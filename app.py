@@ -1,19 +1,16 @@
 import os
 import re
 import json
-from flask import Flask, request, jsonify, send_from_directory
-from flask import render_template_string
+from flask import Flask, request, jsonify, render_template_string
 import markdown
 
 # -------------------------------------------------------------------
 # Configuration
 # -------------------------------------------------------------------
-# Replace this with the path to your Obsidian vault or directory
-CONTENT_ROOT = "/home/will-white/Documentation/Documentation/"
+CONTENT_ROOT = "/home/will-white/Documentation/Documentation"
 
 app = Flask(__name__)
 
-# Caches for directory tree and file contents
 file_tree = {}
 file_cache = {}
 
@@ -22,14 +19,13 @@ file_cache = {}
 # -------------------------------------------------------------------
 def build_file_tree(root):
     """
-    Recursively build a nested dictionary structure representing
+    Recursively build a nested list structure representing
     the folder/file hierarchy under 'root'.
     """
     tree = []
     with os.scandir(root) as it:
         for entry in sorted(it, key=lambda e: (not e.is_dir(), e.name.lower())):
             if entry.is_dir():
-                # Recurse into subdirectories
                 subtree = build_file_tree(entry.path)
                 tree.append({
                     "type": "directory",
@@ -73,14 +69,9 @@ def search_in_files(query, cache):
     query_lower = query.lower()
 
     for path, content in cache.items():
-        # Check if query is in content
         if query_lower in content.lower():
-            # Collect up to 3 snippets for demonstration
             snippets = []
-            # Find all occurrences (start indices)
-            # Using regex to get match spans
             matches = [m.start() for m in re.finditer(re.escape(query_lower), content.lower())]
-
             for m in matches[:3]:  # limit to 3 matches
                 start = max(0, m - 30)
                 end = min(len(content), m + 30)
@@ -111,7 +102,8 @@ def init_data():
 @app.route("/")
 def index():
     """
-    Serve a very simple HTML/JS page that calls the API endpoints.
+    Serve a Bootstrap-based page that calls our API endpoints
+    and displays a professional-looking interface.
     """
     html_template = """
     <!DOCTYPE html>
@@ -119,39 +111,48 @@ def index():
     <head>
         <meta charset="utf-8">
         <title>Obsidian Markdown Server (PoC)</title>
+        <!-- Bootstrap CSS -->
+        <link 
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" 
+          rel="stylesheet"
+        >
+        <!-- Bootstrap Icons (optional) -->
+        <link 
+          rel="stylesheet" 
+          href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
+        >
         <style>
             body {
-                margin: 0; padding: 0;
-                font-family: Arial, sans-serif;
-                display: flex; height: 100vh;
+                margin: 0;
+                padding: 0;
+                height: 100vh;
+                display: flex;
+                flex-direction: column;
             }
             #sidebar {
-                width: 300px;
                 border-right: 1px solid #ccc;
                 overflow-y: auto;
-                padding: 10px;
+                max-height: calc(100vh - 56px); /* subtract navbar height */
             }
             #content {
-                flex: 1;
-                padding: 20px;
                 overflow-y: auto;
+                max-height: calc(100vh - 56px);
             }
-            .directory {
-                font-weight: bold;
-                margin-top: 10px;
+            .directory-toggle {
                 cursor: pointer;
             }
-            .file {
-                margin-left: 20px;
+            .file-item {
                 cursor: pointer;
             }
-            .search-container {
-                margin-bottom: 10px;
+            .file-tree {
+                list-style-type: none;
+                padding-left: 1rem;
             }
-            #searchResults {
-                margin-top: 10px;
-                background: #f9f9f9;
-                padding: 10px;
+            .file-tree li {
+                margin: 0.25rem 0;
+            }
+            .collapse {
+                transition: height 0.2s ease;
             }
             mark {
                 background-color: yellow;
@@ -159,16 +160,56 @@ def index():
         </style>
     </head>
     <body>
-        <div id="sidebar">
-            <div class="search-container">
-                <input type="text" id="searchBox" placeholder="Search...">
-                <button onclick="search()">Search</button>
+        <!-- Navbar -->
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="#">
+                    <i class="bi bi-journal-text"></i> Obsidian Markdown Server
+                </a>
             </div>
-            <div id="searchResults"></div>
-            <hr>
-            <div id="fileTree"></div>
+        </nav>
+
+        <!-- Main container -->
+        <div class="container-fluid flex-grow-1">
+            <div class="row h-100">
+                <!-- Sidebar -->
+                <div class="col-12 col-md-3 bg-light" id="sidebar">
+                    <div class="p-3">
+                        <div class="input-group mb-3">
+                            <input 
+                              type="text" 
+                              class="form-control" 
+                              placeholder="Search..." 
+                              aria-label="Search" 
+                              aria-describedby="search-btn" 
+                              id="searchBox"
+                            >
+                            <button 
+                              class="btn btn-primary" 
+                              type="button" 
+                              id="search-btn" 
+                              onclick="search()"
+                            >
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                        <div id="searchResults" class="mb-3"></div>
+                        <hr>
+                        <ul class="file-tree" id="fileTree"></ul>
+                    </div>
+                </div>
+
+                <!-- Content area -->
+                <div class="col-12 col-md-9 p-4" id="content">
+                    <p class="text-muted">Select a file from the sidebar...</p>
+                </div>
+            </div>
         </div>
-        <div id="content">Select a file from the sidebar...</div>
+
+        <!-- Bootstrap JS (for collapsibles, etc.) -->
+        <script 
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
+        </script>
 
         <script>
             // ---------------------------
@@ -185,30 +226,53 @@ def index():
             function buildTreeUI(nodes, container) {
                 nodes.forEach(node => {
                     if(node.type === "directory") {
-                        const dirEl = document.createElement("div");
-                        dirEl.textContent = node.name;
-                        dirEl.className = "directory";
-                        dirEl.onclick = () => {
-                            // Toggle expand/collapse
-                            const childrenEl = dirEl.nextElementSibling;
-                            if(childrenEl.style.display === "none") {
-                                childrenEl.style.display = "block";
-                            } else {
-                                childrenEl.style.display = "none";
-                            }
-                        };
-                        container.appendChild(dirEl);
+                        // Directory item
+                        const li = document.createElement("li");
+                        
+                        // Toggle icon
+                        const icon = document.createElement("i");
+                        icon.className = "bi bi-folder directory-toggle me-1 text-warning";
 
-                        const childrenContainer = document.createElement("div");
-                        childrenContainer.style.display = "none"; // collapsed by default
-                        buildTreeUI(node.children, childrenContainer);
-                        container.appendChild(childrenContainer);
+                        // Directory name
+                        const dirName = document.createElement("span");
+                        dirName.textContent = node.name;
+                        dirName.className = "directory-toggle fw-bold";
+
+                        // Children container
+                        const childrenUl = document.createElement("ul");
+                        childrenUl.className = "file-tree ms-3 collapse";
+                        buildTreeUI(node.children, childrenUl);
+
+                        // On click, toggle collapse
+                        dirName.addEventListener("click", () => {
+                            const isShown = childrenUl.classList.contains("show");
+                            if (isShown) {
+                                childrenUl.classList.remove("show");
+                                icon.className = "bi bi-folder directory-toggle me-1 text-warning";
+                            } else {
+                                childrenUl.classList.add("show");
+                                icon.className = "bi bi-folder2-open directory-toggle me-1 text-warning";
+                            }
+                        });
+
+                        li.appendChild(icon);
+                        li.appendChild(dirName);
+                        li.appendChild(childrenUl);
+                        container.appendChild(li);
                     } else if(node.type === "file") {
-                        const fileEl = document.createElement("div");
+                        // File item
+                        const li = document.createElement("li");
+                        const icon = document.createElement("i");
+                        icon.className = "bi bi-file-earmark-text me-1 text-secondary";
+                        
+                        const fileEl = document.createElement("span");
                         fileEl.textContent = node.name;
-                        fileEl.className = "file";
+                        fileEl.className = "file-item";
                         fileEl.onclick = () => loadFile(node.path);
-                        container.appendChild(fileEl);
+
+                        li.appendChild(icon);
+                        li.appendChild(fileEl);
+                        container.appendChild(li);
                     }
                 });
             }
@@ -221,7 +285,7 @@ def index():
                 const data = await resp.json();
                 const contentDiv = document.getElementById("content");
                 if(data.error) {
-                    contentDiv.innerHTML = "<p style='color:red;'>" + data.error + "</p>";
+                    contentDiv.innerHTML = "<p class='text-danger'>" + data.error + "</p>";
                 } else {
                     contentDiv.innerHTML = data.html;
                 }
@@ -243,7 +307,7 @@ def index():
                 }
                 let html = "";
                 results.forEach(r => {
-                    html += "<div><strong>" + r.path + "</strong><br>";
+                    html += "<div class='mb-2'><strong>" + r.path + "</strong><br>";
                     r.snippets.forEach(sn => {
                         html += "<div>... " + sn + " ...</div>";
                     });
@@ -277,8 +341,8 @@ def api_file():
     if not rel_path:
         return jsonify({"error": "No file path specified."})
 
-    # Prevent path traversal outside CONTENT_ROOT
     full_path = os.path.join(CONTENT_ROOT, rel_path)
+    # Prevent path traversal
     if not os.path.commonprefix([CONTENT_ROOT, os.path.realpath(full_path)]) == CONTENT_ROOT:
         return jsonify({"error": "Invalid path."})
 
@@ -307,5 +371,4 @@ def api_search():
 # Main entry point
 # -------------------------------------------------------------------
 if __name__ == "__main__":
-    # Run in debug mode for PoC; not recommended for production
     app.run(host="0.0.0.0", port=5000, debug=True)
