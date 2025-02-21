@@ -25,7 +25,6 @@ def build_file_tree(root):
     """
     tree = []
     with os.scandir(root) as it:
-        # Sort so directories come first, then files, alphabetically
         for entry in sorted(it, key=lambda e: (not e.is_dir(), e.name.lower())):
             # Skip .obsidian
             if entry.is_dir() and entry.name == ".obsidian":
@@ -54,10 +53,9 @@ def cache_files(root):
     Skip the '.obsidian' directory so it doesn't appear in search results.
     """
     cache = {}
-    # Use os.walk but remove .obsidian from dirnames
     for dirpath, dirnames, filenames in os.walk(root):
         if ".obsidian" in dirnames:
-            dirnames.remove(".obsidian")  # skip traversal into .obsidian
+            dirnames.remove(".obsidian")
 
         for filename in filenames:
             if filename.lower().endswith(".md"):
@@ -84,11 +82,9 @@ def search_in_files(query, cache):
         if matches:
             match_list = []
             for m in matches:
-                # Build a snippet with ~30 chars of context on each side
                 snippet_start = max(0, m - 30)
                 snippet_end = min(len(content), m + 30)
                 snippet_text = content[snippet_start:snippet_end].replace("\n", " ")
-                # Highlight the actual query in the snippet (for display only)
                 snippet_text_display = re.sub(
                     re.escape(query),
                     lambda x: f"<mark>{x.group(0)}</mark>",
@@ -135,7 +131,9 @@ def index():
     - File list hides '.md'
     - Search results are collapsible
     - Clicking a search result highlights the match
-    - Title is added above each rendered document
+    - Title is added above each rendered document, with an extra <br> after
+    - A 'Clear' button removes the search results
+    - Long filenames/paths are wrapped in the accordion
     """
     html_template = """
     <!DOCTYPE html>
@@ -189,11 +187,17 @@ def index():
             mark {
                 background-color: yellow;
             }
-            #searchResults a {
+            #searchAccordion a {
                 text-decoration: none;
             }
-            #searchResults a:hover {
+            #searchAccordion a:hover {
                 text-decoration: underline;
+            }
+
+            /* NEW: Wrap long text in the accordion headers */
+            .accordion-button {
+                white-space: normal;
+                overflow-wrap: anywhere; /* or 'break-word' if preferred */
             }
         </style>
     </head>
@@ -231,6 +235,13 @@ def index():
                                 <i class="bi bi-search"></i>
                             </button>
                         </div>
+                        <!-- NEW CLEAR BUTTON -->
+                        <div class="d-flex justify-content-end mb-3">
+                            <button class="btn btn-secondary" type="button" onclick="clearSearchResults()">
+                                <i class="bi bi-x-circle"></i> Clear
+                            </button>
+                        </div>
+
                         <!-- Accordion for search results -->
                         <div class="accordion mb-3" id="searchAccordion"></div>
                         <hr>
@@ -255,7 +266,7 @@ def index():
             //  UTILS
             // ---------------------------
             function stripMdExtension(filename) {
-                return filename.replace(/\.md$/i, "");
+                return filename.replace(/\\.md$/i, "");
             }
 
             // For display in search results (path minus .md on last segment)
@@ -265,6 +276,13 @@ def index():
                 const stripped = stripMdExtension(fileName);
                 parts.push(stripped);
                 return parts.join("/");
+            }
+
+            // ---------------------------
+            //  Clear Search Results
+            // ---------------------------
+            function clearSearchResults() {
+                document.getElementById("searchAccordion").innerHTML = "";
             }
 
             // ---------------------------
@@ -290,7 +308,7 @@ def index():
 
                         // Directory name
                         const dirName = document.createElement("span");
-                        dirName.textContent = node.name;  // Keep original folder name
+                        dirName.textContent = node.name;
                         dirName.className = "directory-toggle fw-bold";
 
                         // Children container
@@ -343,10 +361,10 @@ def index():
                 if(data.error) {
                     contentDiv.innerHTML = "<p class='text-danger'>" + data.error + "</p>";
                 } else {
-                    // Add an H3 title using the file name (minus .md)
+                    // Add an H3 title using the file name (minus .md) + EXTRA BR
                     const baseName = filePath.split("/").pop();
                     const displayName = stripMdExtension(baseName);
-                    contentDiv.innerHTML = "<h3>" + displayName + "</h3>" + data.html;
+                    contentDiv.innerHTML = "<h3>" + displayName + "</h3><br>" + data.html;
                 }
             }
 
@@ -364,10 +382,10 @@ def index():
                 if (data.error) {
                     contentDiv.innerHTML = "<p class='text-danger'>" + data.error + "</p>";
                 } else {
-                    // Add an H3 title using the file name (minus .md)
+                    // Add an H3 title using the file name (minus .md) + EXTRA BR
                     const baseName = filePath.split("/").pop();
                     const displayName = stripMdExtension(baseName);
-                    contentDiv.innerHTML = "<h3>" + displayName + "</h3>" + data.html;
+                    contentDiv.innerHTML = "<h3>" + displayName + "</h3><br>" + data.html;
 
                     // Attempt to scroll to the highlight
                     const highlightEl = document.getElementById("search-highlight");
@@ -471,7 +489,6 @@ def api_file():
         return jsonify({"error": "No file path specified."})
 
     full_path = os.path.join(CONTENT_ROOT, rel_path)
-    # Prevent path traversal
     if not os.path.commonprefix([CONTENT_ROOT, os.path.realpath(full_path)]) == CONTENT_ROOT:
         return jsonify({"error": "Invalid path."})
 
@@ -479,7 +496,6 @@ def api_file():
         return jsonify({"error": f"File '{rel_path}' not found."})
 
     content = file_cache[rel_path]
-    # Convert markdown to HTML
     html_content = markdown.markdown(content, extensions=["fenced_code", "tables"])
     return jsonify({"html": html_content})
 
@@ -500,7 +516,6 @@ def api_file_with_highlight():
         return jsonify({"error": "No file path specified."})
 
     full_path = os.path.join(CONTENT_ROOT, rel_path)
-    # Prevent path traversal
     if not os.path.commonprefix([CONTENT_ROOT, os.path.realpath(full_path)]) == CONTENT_ROOT:
         return jsonify({"error": "Invalid path."})
 
@@ -521,14 +536,11 @@ def api_file_with_highlight():
     match_text = content[start:end]
     suffix = content[end:]
 
-    # We use placeholders to avoid messing up Markdown syntax
     new_content = prefix + "[[HL]]" + match_text + "[[/HL]]" + suffix
 
-    # Convert to HTML
     html_content = markdown.markdown(new_content, extensions=["fenced_code", "tables"])
 
     # Replace placeholders with a highlight <span>
-    # We give the span an ID so we can scroll to it
     html_content = html_content.replace(
         "[[HL]]", 
         "<span id='search-highlight' style='background-color: yellow'>"
