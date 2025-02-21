@@ -7,7 +7,7 @@ import markdown
 # -------------------------------------------------------------------
 # Configuration
 # -------------------------------------------------------------------
-CONTENT_ROOT = "/home/will-white/Documentation/Documentation"
+CONTENT_ROOT = "/home/will-white/Documentation/Documentation/"
 
 app = Flask(__name__)
 
@@ -63,28 +63,37 @@ def cache_files(root):
 def search_in_files(query, cache):
     """
     Naive substring search across all cached .md files.
-    Returns a list of search results with file path and snippet.
+    Returns a list of { path, matches: [{ snippet, start, length }, ...] }.
     """
     results = []
     query_lower = query.lower()
 
     for path, content in cache.items():
-        if query_lower in content.lower():
-            snippets = []
-            matches = [m.start() for m in re.finditer(re.escape(query_lower), content.lower())]
-            for m in matches[:3]:  # limit to 3 matches
-                start = max(0, m - 30)
-                end = min(len(content), m + 30)
-                snippet = content[start:end].replace("\n", " ")
-                # highlight the matched text for demonstration
-                snippet = snippet.replace(query, f"<mark>{query}</mark>")
-                snippets.append(snippet)
-
+        content_lower = content.lower()
+        matches = [m.start() for m in re.finditer(re.escape(query_lower), content_lower)]
+        if matches:
+            match_list = []
+            for m in matches:
+                # Build a snippet with ~30 chars of context on each side
+                snippet_start = max(0, m - 30)
+                snippet_end = min(len(content), m + 30)
+                snippet_text = content[snippet_start:snippet_end].replace("\n", " ")
+                # Highlight the actual query in the snippet (for display only)
+                snippet_text_display = re.sub(
+                    re.escape(query),
+                    lambda x: f"<mark>{x.group(0)}</mark>",
+                    snippet_text,
+                    flags=re.IGNORECASE
+                )
+                match_list.append({
+                    "snippet": snippet_text_display,
+                    "start": m,
+                    "length": len(query)
+                })
             results.append({
                 "path": path,
-                "snippets": snippets
+                "matches": match_list
             })
-
     return results
 
 # -------------------------------------------------------------------
@@ -103,7 +112,8 @@ def init_data():
 def index():
     """
     Serve a Bootstrap-based page that calls our API endpoints
-    and displays a professional-looking interface.
+    and displays a professional-looking interface with clickable
+    search results that jump to the highlighted match.
     """
     html_template = """
     <!DOCTYPE html>
@@ -156,6 +166,12 @@ def index():
             }
             mark {
                 background-color: yellow;
+            }
+            #searchResults a {
+                text-decoration: none;
+            }
+            #searchResults a:hover {
+                text-decoration: underline;
             }
         </style>
     </head>
@@ -292,6 +308,29 @@ def index():
             }
 
             // ---------------------------
+            //  Load file with highlight
+            // ---------------------------
+            async function loadFileWithHighlight(filePath, start, length) {
+                const resp = await fetch("/api/file_with_highlight?path="
+                    + encodeURIComponent(filePath)
+                    + "&start=" + start
+                    + "&length=" + length
+                );
+                const data = await resp.json();
+                const contentDiv = document.getElementById("content");
+                if (data.error) {
+                    contentDiv.innerHTML = "<p class='text-danger'>" + data.error + "</p>";
+                } else {
+                    contentDiv.innerHTML = data.html;
+                    // Attempt to scroll to the highlight
+                    const highlightEl = document.getElementById("search-highlight");
+                    if (highlightEl) {
+                        highlightEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
+            }
+
+            // ---------------------------
             //  Search
             // ---------------------------
             async function search() {
@@ -306,12 +345,19 @@ def index():
                     return;
                 }
                 let html = "";
-                results.forEach(r => {
-                    html += "<div class='mb-2'><strong>" + r.path + "</strong><br>";
-                    r.snippets.forEach(sn => {
-                        html += "<div>... " + sn + " ...</div>";
+                results.forEach(fileResult => {
+                    html += "<div class='mb-2'><strong>" + fileResult.path + "</strong></div>";
+                    fileResult.matches.forEach(match => {
+                        // Link to open file at the exact match
+                        html += `
+                            <div>
+                                <a href="#"
+                                   onclick="loadFileWithHighlight('${fileResult.path}', ${match.start}, ${match.length})">
+                                    ... ${match.snippet} ...
+                                </a>
+                            </div>`;
                     });
-                    html += "</div><hr>";
+                    html += "<hr>";
                 });
                 resultsDiv.innerHTML = html;
             }
@@ -350,8 +396,63 @@ def api_file():
         return jsonify({"error": f"File '{rel_path}' not found."})
 
     content = file_cache[rel_path]
-    # Convert markdown to HTML
     html_content = markdown.markdown(content, extensions=["fenced_code", "tables"])
+    return jsonify({"html": html_content})
+
+@app.route("/api/file_with_highlight")
+def api_file_with_highlight():
+    """
+    Returns the rendered HTML of a .md file with a specific match highlighted.
+    Query params: ?path=<>&start=<>&length=<>
+    """
+    rel_path = request.args.get("path", "")
+    try:
+        start = int(request.args.get("start", 0))
+        length = int(request.args.get("length", 0))
+    except ValueError:
+        return jsonify({"error": "Invalid start/length."})
+
+    if not rel_path:
+        return jsonify({"error": "No file path specified."})
+
+    full_path = os.path.join(CONTENT_ROOT, rel_path)
+    # Prevent path traversal
+    if not os.path.commonprefix([CONTENT_ROOT, os.path.realpath(full_path)]) == CONTENT_ROOT:
+        return jsonify({"error": "Invalid path."})
+
+    if rel_path not in file_cache:
+        return jsonify({"error": f"File '{rel_path}' not found."})
+
+    content = file_cache[rel_path]
+
+    # Validate offsets
+    if start < 0 or start >= len(content):
+        return jsonify({"error": "Start offset out of range."})
+    end = start + length
+    if end > len(content):
+        end = len(content)
+
+    # Insert placeholders around the matched substring
+    prefix = content[:start]
+    match_text = content[start:end]
+    suffix = content[end:]
+
+    # We use placeholders to avoid messing up Markdown syntax
+    new_content = prefix + "[[HL]]" + match_text + "[[/HL]]" + suffix
+
+    # Convert to HTML
+    html_content = markdown.markdown(new_content, extensions=["fenced_code", "tables"])
+
+    # Replace placeholders with a highlight <span>
+    # We give the span an ID so we can scroll to it
+    html_content = html_content.replace(
+        "[[HL]]", 
+        "<span id='search-highlight' style='background-color: yellow'>"
+    ).replace(
+        "[[/HL]]", 
+        "</span>"
+    )
+
     return jsonify({"html": html_content})
 
 @app.route("/api/search")
@@ -359,6 +460,21 @@ def api_search():
     """
     Naive substring search in all .md files.
     Expects a query param: ?q=<query>
+    Returns a list of objects like:
+    [
+      {
+        "path": "notes/foo.md",
+        "matches": [
+          {
+            "snippet": "...some snippet with <mark>query</mark>...",
+            "start": 123,
+            "length": 5
+          },
+          ...
+        ]
+      },
+      ...
+    ]
     """
     query = request.args.get("q", "").strip()
     if not query:
