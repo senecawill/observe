@@ -7,7 +7,7 @@ import markdown
 # -------------------------------------------------------------------
 # Configuration
 # -------------------------------------------------------------------
-CONTENT_ROOT = "/home/will-white/Documentation/Documentation/"
+CONTENT_ROOT = "/home/will-white/Documentation"
 
 app = Flask(__name__)
 
@@ -21,13 +21,17 @@ def build_file_tree(root):
     """
     Recursively build a nested list structure representing
     the folder/file hierarchy under 'root'.
-    Skip the '.obsidian' directory.
+    Skip the '.obsidian' directory and files starting with '._'.
     """
     tree = []
     with os.scandir(root) as it:
         for entry in sorted(it, key=lambda e: (not e.is_dir(), e.name.lower())):
             # Skip .obsidian
             if entry.is_dir() and entry.name == ".obsidian":
+                continue
+
+            # Skip files starting with '._'
+            if not entry.is_dir() and entry.name.startswith("."):
                 continue
 
             if entry.is_dir():
@@ -50,7 +54,8 @@ def build_file_tree(root):
 def cache_files(root):
     """
     Recursively scan the root directory for .md files and cache their content.
-    Skip the '.obsidian' directory so it doesn't appear in search results.
+    Skip the '.obsidian' directory so it doesn't appear in search results,
+    and also skip files starting with '._'.
     """
     cache = {}
     for dirpath, dirnames, filenames in os.walk(root):
@@ -58,6 +63,10 @@ def cache_files(root):
             dirnames.remove(".obsidian")
 
         for filename in filenames:
+            # Skip files starting with '._'
+            if filename.startswith("."):
+                continue
+
             if filename.lower().endswith(".md"):
                 full_path = os.path.join(dirpath, filename)
                 rel_path = os.path.relpath(full_path, CONTENT_ROOT)
@@ -498,7 +507,7 @@ def api_file():
         return jsonify({"error": f"File '{rel_path}' not found."})
 
     content = file_cache[rel_path]
-    html_content = markdown.markdown(content, extensions=["fenced_code", "tables"])
+    html_content = markdown.markdown(content, extensions=["fenced_code", "tables", "extra"])
     return jsonify({"html": html_content})
 
 @app.route("/api/file_with_highlight")
@@ -540,7 +549,7 @@ def api_file_with_highlight():
 
     new_content = prefix + "[[HL]]" + match_text + "[[/HL]]" + suffix
 
-    html_content = markdown.markdown(new_content, extensions=["fenced_code", "tables"])
+    html_content = markdown.markdown(new_content, extensions=["fenced_code", "tables", "extra"])
 
     # Replace placeholders with a highlight <span>
     html_content = html_content.replace(
