@@ -490,6 +490,8 @@ def api_tree():
     return jsonify(file_tree)
 
 @app.route("/api/file")
+
+@app.route("/api/file")
 def api_file():
     """
     Return the rendered HTML of a specific .md file.
@@ -507,7 +509,19 @@ def api_file():
         return jsonify({"error": f"File '{rel_path}' not found."})
 
     content = file_cache[rel_path]
+
+    # Ensure Setext-style headings (===) render correctly
+    content = re.sub(r"(\n={3,})", r"\n\n\1\n", content)
+
+    # Ensure inline code (`...`) has a break if followed by a heading (**...)
+    content = re.sub(r"(`[^`]+`)(\s*)(\*\*)", r"\1\n\n\3", content)
+
+    # Ensure inline code (`...`) has a break if followed by a heading (## or ###)
+    content = re.sub(r"(`[^`]+`)(\s*)(#)", r"\1\n\n\3", content)
+
+    # Convert markdown to HTML
     html_content = markdown.markdown(content, extensions=["fenced_code", "tables", "extra"])
+
     return jsonify({"html": html_content})
 
 @app.route("/api/file_with_highlight")
@@ -535,6 +549,15 @@ def api_file_with_highlight():
 
     content = file_cache[rel_path]
 
+    # Ensure Setext-style headings (===) render correctly
+    content = re.sub(r"(\n={3,})", r"\n\n\1\n", content)
+
+    # Ensure inline code (`...`) has a break if followed by a heading (**...)
+    content = re.sub(r"(`[^`]+`)(\s*)(\*\*)", r"\1\n\n\3", content)
+
+    # Ensure inline code (`...`) has a break if followed by a heading (## or ###)
+    content = re.sub(r"(`[^`]+`)(\s*)(#)", r"\1\n\n\3", content)
+
     # Validate offsets
     if start < 0 or start >= len(content):
         return jsonify({"error": "Start offset out of range."})
@@ -551,12 +574,12 @@ def api_file_with_highlight():
 
     html_content = markdown.markdown(new_content, extensions=["fenced_code", "tables", "extra"])
 
-    # Replace placeholders with a highlight <span>
+    # Ensure search highlighting doesn't interfere with markdown rendering
     html_content = html_content.replace(
-        "[[HL]]", 
-        "<span id='search-highlight' style='background-color: yellow'>"
+        "[[HL]]",
+        "<span id='search-highlight' style='background-color: yellow; display: inline-block;'>"
     ).replace(
-        "[[/HL]]", 
+        "[[/HL]]",
         "</span>"
     )
 
