@@ -543,6 +543,7 @@ def api_file():
     - Properly formatted tables with Bootstrap styling
     - Single newlines converted to <br>
     - Improved spacing and grid layout
+    - Correctly rendered numbered lists
     """
     rel_path = request.args.get("path", "")
     if not rel_path:
@@ -560,15 +561,16 @@ def api_file():
     # Normalize newlines to Unix-style
     content = content.replace("\r\n", "\n").replace("\r", "\n")
 
-    # Convert Markdown to HTML
+    # Convert Markdown to HTML with correct list rendering
     html_content = markdown.markdown(
         content,
         extensions=[
-            "fenced_code",  # Properly handles multi-line code blocks
-            "tables",       # Ensures Markdown tables are rendered correctly
-            "extra",        # Adds support for footnotes, abbreviations, etc.
-            "codehilite",   # Enables syntax highlighting
-            "nl2br",        # Converts single newlines to <br>
+            "fenced_code",      # Handles multi-line code blocks
+            "tables",           # Enables Markdown table rendering
+            "extra",            # Adds support for footnotes, abbreviations, etc.
+            "codehilite",       # Enables syntax highlighting
+            "nl2br",            # Converts single newlines to <br>
+            "sane_lists",       # Fixes numbered list rendering
         ],
     )
 
@@ -577,6 +579,7 @@ def api_file():
 
     return jsonify({"html": html_content})
 
+
 @app.route("/api/file_with_highlight")
 def api_file_with_highlight():
     """
@@ -584,6 +587,7 @@ def api_file_with_highlight():
     - Properly formatted tables with Bootstrap styling
     - Single newlines converted to <br>
     - Improved spacing and grid layout
+    - Correctly rendered numbered lists
     - Highlighting for the matched substring
     """
     rel_path = request.args.get("path", "")
@@ -619,15 +623,16 @@ def api_file_with_highlight():
             + content[end:]
         )
 
-    # Convert Markdown to HTML
+    # Convert Markdown to HTML with correct list rendering
     html_content = markdown.markdown(
         highlight_content,
         extensions=[
-            "fenced_code",  # Properly handles multi-line code blocks
-            "tables",       # Ensures Markdown tables are rendered correctly
-            "extra",        # Adds support for footnotes, abbreviations, etc.
-            "codehilite",   # Enables syntax highlighting
-            "nl2br",        # Converts single newlines to <br> (consistent with api_file)
+            "fenced_code",      # Handles multi-line code blocks
+            "tables",           # Enables Markdown table rendering
+            "extra",            # Adds support for footnotes, abbreviations, etc.
+            "codehilite",       # Enables syntax highlighting
+            "nl2br",            # Converts single newlines to <br>
+            "sane_lists",       # Fixes numbered list rendering
         ],
     )
 
@@ -644,6 +649,7 @@ def api_file_with_highlight():
     html_content = re.sub(r"<table>", '<table class="table table-bordered table-striped">', html_content)
 
     return jsonify({"html": html_content})
+
 
 @app.route("/api/search")
 def api_search():
