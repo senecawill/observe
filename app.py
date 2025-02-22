@@ -3,6 +3,7 @@ import re
 import json
 from flask import Flask, request, jsonify, render_template_string
 import markdown
+from markdown.extensions.codehilite import CodeHiliteExtension
 
 # -------------------------------------------------------------------
 # Configuration
@@ -25,12 +26,13 @@ def build_file_tree(root):
     """
     tree = []
     with os.scandir(root) as it:
+        # Sort directories first (alphabetically), then files
         for entry in sorted(it, key=lambda e: (not e.is_dir(), e.name.lower())):
             # Skip .obsidian
             if entry.is_dir() and entry.name == ".obsidian":
                 continue
 
-            # Skip files starting with '._'
+            # Skip files starting with '.' or '._'
             if not entry.is_dir() and entry.name.startswith("."):
                 continue
 
@@ -63,7 +65,7 @@ def cache_files(root):
             dirnames.remove(".obsidian")
 
         for filename in filenames:
-            # Skip files starting with '._'
+            # Skip files starting with '.' or '._'
             if filename.startswith("."):
                 continue
 
@@ -94,6 +96,7 @@ def search_in_files(query, cache):
                 snippet_start = max(0, m - 30)
                 snippet_end = min(len(content), m + 30)
                 snippet_text = content[snippet_start:snippet_end].replace("\n", " ")
+                # Mark up the snippet
                 snippet_text_display = re.sub(
                     re.escape(query),
                     lambda x: f"<mark>{x.group(0)}</mark>",
@@ -202,56 +205,55 @@ def index():
             #searchAccordion a:hover {
                 text-decoration: underline;
             }
-            /* Wrap long text in the accordion headers */
             .accordion-button {
                 white-space: normal;
                 overflow-wrap: anywhere;
             }
-            /* Syntax Highlighting for Code Blocks */
+            /* Light Mode Code Block Styling */
             .codehilite {
-                background: #282c34;  /* Dark background similar to Obsidian */
-                color: #abb2bf;       /* Default text color */
-                padding: 1rem;
-                border-radius: 8px;
-                font-family: monospace;
+                background: #f5f5f5;  /* Light gray background */
+                color: #333;          /* Dark gray text for readability */
+                border-radius: 6px;
+                padding: 10px;
+                font-family: "Courier New", Courier, monospace;
                 overflow-x: auto;
+                border: 1px solid #ddd; /* Light gray border */
             }
-            /* Pygments Syntax Colors */
-            .codehilite .hll { background-color: #333842 } /* Highlight */
-            .codehilite .c { color: #7F848E } /* Comments */
-            .codehilite .err { color: #F44747 } /* Error */
-            .codehilite .k { color: #C678DD } /* Keywords */
-            .codehilite .o { color: #56B6C2 } /* Operators */
-            .codehilite .cm { color: #7F848E } /* Multiline comments */
-            .codehilite .cp { color: #E06C75 } /* Preprocessor */
-            .codehilite .cpf { color: #E5C07B } /* File Path */
-            .codehilite .cs { color: #7F848E } /* Special comments */
-            .codehilite .gd { color: #E06C75 } /* Deletion */
-            .codehilite .ge { font-style: italic } /* Emphasis */
-            .codehilite .gr { color: #F44747 } /* Error */
-            .codehilite .gh { color: #61AFEF; font-weight: bold } /* Heading */
-            .codehilite .gi { color: #98C379 } /* Insertions */
-            .codehilite .go { color: #7F848E } /* Operators */
-            .codehilite .gp { color: #D19A66 } /* Prompt */
-            .codehilite .gs { font-weight: bold } /* Strong */
-            .codehilite .gu { color: #E5C07B; font-weight: bold } /* URL */
-            .codehilite .gt { color: #F44747 } /* Diff separator */
-            .codehilite .kc { color: #C678DD } /* Constants */
-            .codehilite .kd { color: #C678DD } /* Definition */
-            .codehilite .kn { color: #C678DD } /* Namespace */
-            .codehilite .kp { color: #C678DD } /* Punctuation */
-            .codehilite .kr { color: #C678DD } /* Reserved */
-            .codehilite .kt { color: #E5C07B } /* Types */
-            .codehilite .m { color: #D19A66 } /* Numbers */
-            .codehilite .s { color: #98C379 } /* Strings */
-            .codehilite .na { color: #E5C07B } /* Attribute */
-            .codehilite .nb { color: #E5C07B } /* Builtins */
-            .codehilite .nc { color: #E5C07B } /* Classes */
-            .codehilite .no { color: #E5C07B } /* Namespaces */
-            .codehilite .nd { color: #E5C07B } /* Decorators */
-            .codehilite .nf { color: #61AFEF } /* Functions */
-            .codehilite .nl { color: #E5C07B } /* Labels */
-            .codehilite .nn { color: #E5C07B } /* Namespaces */
+            .codehilite .hll { background-color: #ffffcc }
+            .codehilite .c { color: #008000 }
+            .codehilite .err { color: #a61717; background-color: #e3d2d2 }
+            .codehilite .k { color: #0000ff }
+            .codehilite .o { color: #666666 }
+            .codehilite .cm { color: #008000 }
+            .codehilite .cp { color: #404040 }
+            .codehilite .cpf { color: #666666 }
+            .codehilite .cs { color: #008000; font-weight: bold }
+            .codehilite .gd { color: #a61717 }
+            .codehilite .ge { font-style: italic }
+            .codehilite .gr { color: #aa0000 }
+            .codehilite .gh { color: #003366; font-weight: bold }
+            .codehilite .gi { color: #008400 }
+            .codehilite .go { color: #888888 }
+            .codehilite .gp { color: #404040 }
+            .codehilite .gs { font-weight: bold }
+            .codehilite .gu { color: #800080; font-weight: bold }
+            .codehilite .gt { color: #aa0000 }
+            .codehilite .kc { color: #0000ff }
+            .codehilite .kd { color: #0000ff }
+            .codehilite .kn { color: #0000ff }
+            .codehilite .kp { color: #0000ff }
+            .codehilite .kr { color: #0000ff }
+            .codehilite .kt { color: #2b91af }
+            .codehilite .m { color: #098658 }
+            .codehilite .s { color: #a31515 }
+            .codehilite .na { color: #2b91af }
+            .codehilite .nb { color: #2b91af }
+            .codehilite .nc { color: #2b91af }
+            .codehilite .no { color: #2b91af }
+            .codehilite .nd { color: #2b91af }
+            .codehilite .nf { color: #795e26 }
+            .codehilite .nl { color: #2b91af }
+            .codehilite .nn { color: #2b91af }
         </style>
     </head>
     <body>
@@ -288,7 +290,7 @@ def index():
                             >
                                 <i class="bi bi-search"></i>
                             </button>
-                            <!-- CLEAR BUTTON: same styling, no text, next to search icon -->
+                            <!-- CLEAR BUTTON -->
                             <button 
                               class="btn btn-primary" 
                               type="button" 
@@ -534,13 +536,10 @@ def api_tree():
     """
     return jsonify(file_tree)
 
-import markdown
-from markdown.extensions.codehilite import CodeHiliteExtension
-
 @app.route("/api/file")
 def api_file():
     """
-    Return the rendered HTML of a specific .md file with syntax-highlighted code blocks.
+    Return the rendered HTML of a specific .md file with single newlines converted to <br>.
     """
     rel_path = request.args.get("path", "")
     if not rel_path:
@@ -555,23 +554,18 @@ def api_file():
 
     content = file_cache[rel_path]
 
-    # Ensure Setext-style headings (===) render correctly
-    content = re.sub(r"(\n={3,})", r"\n\n\1\n", content)
+    # Normalize newlines to Unix-style (optional but good for consistency)
+    content = content.replace("\r\n", "\n").replace("\r", "\n")
 
-    # Ensure inline code (`...`) has a break if followed by a heading (**...)
-    content = re.sub(r"(`[^`]+`)(\s*)(\*\*)", r"\1\n\n\3", content)
-
-    # Ensure inline code (`...`) has a break if followed by a heading (## or ###)
-    content = re.sub(r"(`[^`]+`)(\s*)(#)", r"\1\n\n\3", content)
-
-    # Convert markdown to HTML with syntax highlighting
+    # Convert Markdown to HTML with `nl2br` enabled
     html_content = markdown.markdown(
         content,
         extensions=[
-            "fenced_code",
-            "tables",
-            "extra",
-            CodeHiliteExtension(linenums=False, guess_lang=True, css_class="codehilite"),
+            "fenced_code",  # Ensures code blocks are handled properly
+            "tables",       # Enables table rendering
+            "extra",        # Adds support for footnotes, abbreviations, etc.
+            "codehilite",   # Enables syntax highlighting
+            "nl2br",        # Converts single newlines to <br>
         ],
     )
 
@@ -580,7 +574,8 @@ def api_file():
 @app.route("/api/file_with_highlight")
 def api_file_with_highlight():
     """
-    Returns the rendered HTML of a .md file with syntax-highlighted code blocks and search highlighting.
+    Returns the rendered HTML of a .md file with minimal pre-processing
+    and highlighting for the matched substring.
     """
     rel_path = request.args.get("path", "")
     try:
@@ -600,41 +595,34 @@ def api_file_with_highlight():
         return jsonify({"error": f"File '{rel_path}' not found."})
 
     content = file_cache[rel_path]
+    content = content.replace("\r\n", "\n").replace("\r", "\n")
 
-    # Ensure Setext-style headings (===) render correctly
-    content = re.sub(r"(\n={3,})", r"\n\n\1\n", content)
-
-    # Ensure inline code (`...`) has a break if followed by a heading (**...)
-    content = re.sub(r"(`[^`]+`)(\s*)(\*\*)", r"\1\n\n\3", content)
-
-    # Ensure inline code (`...`) has a break if followed by a heading (## or ###)
-    content = re.sub(r"(`[^`]+`)(\s*)(#)", r"\1\n\n\3", content)
-
-    # Validate offsets
-    if start < 0 or start >= len(content):
-        return jsonify({"error": "Start offset out of range."})
+    # Insert a highlight placeholder around the matched substring
     end = start + length
-    if end > len(content):
-        end = len(content)
+    if start < 0 or end > len(content):
+        # Fallback to normal if indices are invalid
+        highlight_content = content
+    else:
+        highlight_content = (
+            content[:start]
+            + "[[HL]]"
+            + content[start:end]
+            + "[[/HL]]"
+            + content[end:]
+        )
 
-    # Insert placeholders around the matched substring
-    prefix = content[:start]
-    match_text = content[start:end]
-    suffix = content[end:]
-
-    new_content = prefix + "[[HL]]" + match_text + "[[/HL]]" + suffix
-
+    # Convert markdown to HTML
     html_content = markdown.markdown(
-        new_content,
+        highlight_content,
         extensions=[
             "fenced_code",
             "tables",
             "extra",
-            CodeHiliteExtension(linenums=False, guess_lang=True, css_class="codehilite"),
+            "codehilite",
         ],
     )
 
-    # Ensure search highlighting doesn't interfere with markdown rendering
+    # Replace highlight placeholders with actual HTML
     html_content = html_content.replace(
         "[[HL]]",
         "<span id='search-highlight' style='background-color: yellow; display: inline-block;'>"
