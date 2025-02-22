@@ -207,6 +207,51 @@ def index():
                 white-space: normal;
                 overflow-wrap: anywhere;
             }
+            /* Syntax Highlighting for Code Blocks */
+            .codehilite {
+                background: #282c34;  /* Dark background similar to Obsidian */
+                color: #abb2bf;       /* Default text color */
+                padding: 1rem;
+                border-radius: 8px;
+                font-family: monospace;
+                overflow-x: auto;
+            }
+            /* Pygments Syntax Colors */
+            .codehilite .hll { background-color: #333842 } /* Highlight */
+            .codehilite .c { color: #7F848E } /* Comments */
+            .codehilite .err { color: #F44747 } /* Error */
+            .codehilite .k { color: #C678DD } /* Keywords */
+            .codehilite .o { color: #56B6C2 } /* Operators */
+            .codehilite .cm { color: #7F848E } /* Multiline comments */
+            .codehilite .cp { color: #E06C75 } /* Preprocessor */
+            .codehilite .cpf { color: #E5C07B } /* File Path */
+            .codehilite .cs { color: #7F848E } /* Special comments */
+            .codehilite .gd { color: #E06C75 } /* Deletion */
+            .codehilite .ge { font-style: italic } /* Emphasis */
+            .codehilite .gr { color: #F44747 } /* Error */
+            .codehilite .gh { color: #61AFEF; font-weight: bold } /* Heading */
+            .codehilite .gi { color: #98C379 } /* Insertions */
+            .codehilite .go { color: #7F848E } /* Operators */
+            .codehilite .gp { color: #D19A66 } /* Prompt */
+            .codehilite .gs { font-weight: bold } /* Strong */
+            .codehilite .gu { color: #E5C07B; font-weight: bold } /* URL */
+            .codehilite .gt { color: #F44747 } /* Diff separator */
+            .codehilite .kc { color: #C678DD } /* Constants */
+            .codehilite .kd { color: #C678DD } /* Definition */
+            .codehilite .kn { color: #C678DD } /* Namespace */
+            .codehilite .kp { color: #C678DD } /* Punctuation */
+            .codehilite .kr { color: #C678DD } /* Reserved */
+            .codehilite .kt { color: #E5C07B } /* Types */
+            .codehilite .m { color: #D19A66 } /* Numbers */
+            .codehilite .s { color: #98C379 } /* Strings */
+            .codehilite .na { color: #E5C07B } /* Attribute */
+            .codehilite .nb { color: #E5C07B } /* Builtins */
+            .codehilite .nc { color: #E5C07B } /* Classes */
+            .codehilite .no { color: #E5C07B } /* Namespaces */
+            .codehilite .nd { color: #E5C07B } /* Decorators */
+            .codehilite .nf { color: #61AFEF } /* Functions */
+            .codehilite .nl { color: #E5C07B } /* Labels */
+            .codehilite .nn { color: #E5C07B } /* Namespaces */
         </style>
     </head>
     <body>
@@ -489,13 +534,13 @@ def api_tree():
     """
     return jsonify(file_tree)
 
-@app.route("/api/file")
+import markdown
+from markdown.extensions.codehilite import CodeHiliteExtension
 
 @app.route("/api/file")
 def api_file():
     """
-    Return the rendered HTML of a specific .md file.
-    Expects a query param: ?path=<relative_path>
+    Return the rendered HTML of a specific .md file with syntax-highlighted code blocks.
     """
     rel_path = request.args.get("path", "")
     if not rel_path:
@@ -519,16 +564,23 @@ def api_file():
     # Ensure inline code (`...`) has a break if followed by a heading (## or ###)
     content = re.sub(r"(`[^`]+`)(\s*)(#)", r"\1\n\n\3", content)
 
-    # Convert markdown to HTML
-    html_content = markdown.markdown(content, extensions=["fenced_code", "tables", "extra"])
+    # Convert markdown to HTML with syntax highlighting
+    html_content = markdown.markdown(
+        content,
+        extensions=[
+            "fenced_code",
+            "tables",
+            "extra",
+            CodeHiliteExtension(linenums=False, guess_lang=True, css_class="codehilite"),
+        ],
+    )
 
     return jsonify({"html": html_content})
 
 @app.route("/api/file_with_highlight")
 def api_file_with_highlight():
     """
-    Returns the rendered HTML of a .md file with a specific match highlighted.
-    Query params: ?path=<>&start=<>&length=<>
+    Returns the rendered HTML of a .md file with syntax-highlighted code blocks and search highlighting.
     """
     rel_path = request.args.get("path", "")
     try:
@@ -572,7 +624,15 @@ def api_file_with_highlight():
 
     new_content = prefix + "[[HL]]" + match_text + "[[/HL]]" + suffix
 
-    html_content = markdown.markdown(new_content, extensions=["fenced_code", "tables", "extra"])
+    html_content = markdown.markdown(
+        new_content,
+        extensions=[
+            "fenced_code",
+            "tables",
+            "extra",
+            CodeHiliteExtension(linenums=False, guess_lang=True, css_class="codehilite"),
+        ],
+    )
 
     # Ensure search highlighting doesn't interfere with markdown rendering
     html_content = html_content.replace(
