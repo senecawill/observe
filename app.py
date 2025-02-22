@@ -539,7 +539,10 @@ def api_tree():
 @app.route("/api/file")
 def api_file():
     """
-    Return the rendered HTML of a specific .md file with single newlines converted to <br>.
+    Return the rendered HTML of a specific .md file with:
+    - Properly formatted tables with Bootstrap styling
+    - Single newlines converted to <br>
+    - Improved spacing and grid layout
     """
     rel_path = request.args.get("path", "")
     if not rel_path:
@@ -554,28 +557,34 @@ def api_file():
 
     content = file_cache[rel_path]
 
-    # Normalize newlines to Unix-style (optional but good for consistency)
+    # Normalize newlines to Unix-style
     content = content.replace("\r\n", "\n").replace("\r", "\n")
 
-    # Convert Markdown to HTML with `nl2br` enabled
+    # Convert Markdown to HTML
     html_content = markdown.markdown(
         content,
         extensions=[
-            "fenced_code",  # Ensures code blocks are handled properly
-            "tables",       # Enables table rendering
+            "fenced_code",  # Properly handles multi-line code blocks
+            "tables",       # Ensures Markdown tables are rendered correctly
             "extra",        # Adds support for footnotes, abbreviations, etc.
             "codehilite",   # Enables syntax highlighting
             "nl2br",        # Converts single newlines to <br>
         ],
     )
 
+    # Apply Bootstrap styles to tables
+    html_content = re.sub(r"<table>", '<table class="table table-bordered table-striped">', html_content)
+
     return jsonify({"html": html_content})
 
 @app.route("/api/file_with_highlight")
 def api_file_with_highlight():
     """
-    Returns the rendered HTML of a .md file with minimal pre-processing
-    and highlighting for the matched substring.
+    Returns the rendered HTML of a .md file with:
+    - Properly formatted tables with Bootstrap styling
+    - Single newlines converted to <br>
+    - Improved spacing and grid layout
+    - Highlighting for the matched substring
     """
     rel_path = request.args.get("path", "")
     try:
@@ -600,8 +609,7 @@ def api_file_with_highlight():
     # Insert a highlight placeholder around the matched substring
     end = start + length
     if start < 0 or end > len(content):
-        # Fallback to normal if indices are invalid
-        highlight_content = content
+        highlight_content = content  # Fallback to normal content if indices are invalid
     else:
         highlight_content = (
             content[:start]
@@ -611,14 +619,15 @@ def api_file_with_highlight():
             + content[end:]
         )
 
-    # Convert markdown to HTML
+    # Convert Markdown to HTML
     html_content = markdown.markdown(
         highlight_content,
         extensions=[
-            "fenced_code",
-            "tables",
-            "extra",
-            "codehilite",
+            "fenced_code",  # Properly handles multi-line code blocks
+            "tables",       # Ensures Markdown tables are rendered correctly
+            "extra",        # Adds support for footnotes, abbreviations, etc.
+            "codehilite",   # Enables syntax highlighting
+            "nl2br",        # Converts single newlines to <br> (consistent with api_file)
         ],
     )
 
@@ -630,6 +639,9 @@ def api_file_with_highlight():
         "[[/HL]]",
         "</span>"
     )
+
+    # Apply Bootstrap styles to tables
+    html_content = re.sub(r"<table>", '<table class="table table-bordered table-striped">', html_content)
 
     return jsonify({"html": html_content})
 
