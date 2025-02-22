@@ -152,7 +152,7 @@ def index():
     <html>
     <head>
         <meta charset="utf-8">
-        <title>Martime Tactical Systems</title>
+        <title>Maritime Tactical Systems</title>
         <!-- Bootstrap CSS -->
         <link 
           href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" 
@@ -261,7 +261,7 @@ def index():
         <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
             <div class="container-fluid">
                 <a class="navbar-brand" href="#">
-                    <i class="bi bi-journal-text"></i> Martime Tactical Systems
+                    <i class="bi bi-journal-text"></i> Maritime Tactical Systems
                 </a>
             </div>
         </nav>
