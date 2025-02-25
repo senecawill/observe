@@ -10,6 +10,14 @@ from markdown.extensions.codehilite import CodeHiliteExtension
 # -------------------------------------------------------------------
 CONTENT_ROOT = "/home/will-white/Documentation"
 
+# Load settings from JSON file
+with open('settings.json', 'r') as f:
+    settings = json.load(f)
+
+# Use the settings for CONTENT_ROOT and PAGE_TITLE
+CONTENT_ROOT = settings.get("content_root", "/default/path")
+PAGE_TITLE = settings.get("page_title", "Default Page Title")
+
 app = Flask(__name__)
 
 file_tree = {}
@@ -152,7 +160,7 @@ def index():
     <html>
     <head>
         <meta charset="utf-8">
-        <title>Maritime Tactical Systems</title>
+        <title>{{ page_title }}</title>  <!-- Use PAGE_TITLE from settings -->
         <!-- Bootstrap CSS -->
         <link 
           href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" 
@@ -261,7 +269,7 @@ def index():
         <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
             <div class="container-fluid">
                 <a class="navbar-brand" href="#">
-                    <i class="bi bi-journal-text"></i> Maritime Tactical Systems
+                    <i class="bi bi-journal-text"></i> {{ page_title }}  <!-- Corrected and ensured proper formatting -->
                 </a>
             </div>
         </nav>
@@ -527,7 +535,7 @@ def index():
     </body>
     </html>
     """
-    return render_template_string(html_template)
+    return render_template_string(html_template, page_title=PAGE_TITLE)
 
 @app.route("/api/tree")
 def api_tree():

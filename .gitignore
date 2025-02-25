@@ -1,1 +1,4 @@
-__pycache__/*.*
+__pycache__/
+__pycache__/*.pyc
+settings.json
+__pycache__/app.cpython-310.pyc
