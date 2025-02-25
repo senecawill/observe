@@ -10,6 +10,8 @@ ObServe is a lightweight web server built using Python and Flask that serves a d
 - Collapsible search results, a clear button for clearing results, and file title display (minus the `.md` extension).
 - A simple Flask API for future extensions.
 
+<img width="1781" alt="image" src="https://github.com/user-attachments/assets/65c5df18-66a0-41fc-99fe-bbb2448e7d82" />
+
 ## Features
 
 ### File and Directory Handling
