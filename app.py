@@ -389,8 +389,6 @@ def index():
             .editor-toolbar {
                 margin-bottom: 10px;
                 padding: 5px;
-                background-color: #f8f9fa;
-                border: 1px solid #ddd;
                 border-radius: 4px;
             }
             .editor-toolbar button {
@@ -448,7 +446,7 @@ def index():
                             >
                             <!-- SEARCH BUTTON -->
                             <button 
-                              class="btn btn-primary" 
+                              class="btn btn-outline-primary" 
                               type="button" 
                               id="search-btn" 
                               onclick="search()"
@@ -457,7 +455,7 @@ def index():
                             </button>
                             <!-- CLEAR BUTTON -->
                             <button 
-                              class="btn btn-primary" 
+                              class="btn btn-outline-secondary" 
                               type="button" 
                               onclick="clearSearchResults()"
                             >
@@ -495,7 +493,88 @@ def index():
         
         <!-- Marked for Markdown rendering -->
         <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-
+        
+        <!-- KaTeX for math equations -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+        <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+        
+        <!-- Mermaid for diagrams -->
+        <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+        
+        <!-- Custom styles for enhanced Markdown features -->
+        <style>
+            /* Callouts/Admonitions */
+            .callout {
+                padding: 1rem;
+                margin: 1rem 0;
+                border-radius: 4px;
+                border-left: 4px solid;
+            }
+            .callout-note {
+                background-color: #f0f7ff;
+                border-left-color: #2196f3;
+            }
+            .callout-warning {
+                background-color: #fff3e0;
+                border-left-color: #ff9800;
+            }
+            .callout-error {
+                background-color: #ffebee;
+                border-left-color: #f44336;
+            }
+            .callout-success {
+                background-color: #e8f5e9;
+                border-left-color: #4caf50;
+            }
+            
+            /* Task lists */
+            .task-list-item {
+                list-style-type: none;
+            }
+            .task-list-item input[type="checkbox"] {
+                margin-right: 0.5rem;
+            }
+            
+            /* Wiki links */
+            .wiki-link {
+                color: #2196f3;
+                text-decoration: none;
+            }
+            .wiki-link:hover {
+                text-decoration: underline;
+            }
+            
+            /* Tags */
+            .tag {
+                background-color: #e0e0e0;
+                padding: 0.2rem 0.5rem;
+                border-radius: 3px;
+                font-size: 0.9em;
+                color: #616161;
+            }
+            
+            /* Mentions */
+            .mention {
+                color: #9c27b0;
+                font-weight: 500;
+            }
+            
+            /* Tables */
+            .table-editor {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 1rem 0;
+            }
+            .table-editor th,
+            .table-editor td {
+                border: 1px solid #ddd;
+                padding: 8px;
+            }
+            .table-editor th {
+                background-color: #f5f5f5;
+            }
+        </style>
         <script>
             // ---------------------------
             //  UTILS
@@ -633,10 +712,10 @@ def index():
                     contentDiv.innerHTML = `
                         <div class="viewer-container">
                             <div class="file-actions">
-                                <button class="btn btn-sm btn-primary" onclick="editFile('${filePath}')">
+                                <button class="btn btn-outline-primary" onclick="editFile('${filePath}')">
                                     <i class="bi bi-pencil"></i> Edit
                                 </button>
-                                <button class="btn btn-sm btn-danger" onclick="deleteFile('${filePath}')">
+                                <button class="btn btn-outline-danger" onclick="deleteFile('${filePath}')">
                                     <i class="bi bi-trash"></i> Delete
                                 </button>
                             </div>
@@ -669,10 +748,10 @@ def index():
                     contentDiv.innerHTML = `
                         <div class="viewer-container">
                             <div class="file-actions">
-                                <button class="btn btn-sm btn-primary" onclick="editFile('${filePath}')">
+                                <button class="btn btn-outline-primary" onclick="editFile('${filePath}')">
                                     <i class="bi bi-pencil"></i> Edit
                                 </button>
-                                <button class="btn btn-sm btn-danger" onclick="deleteFile('${filePath}')">
+                                <button class="btn btn-outline-danger" onclick="deleteFile('${filePath}')">
                                     <i class="bi bi-trash"></i> Delete
                                 </button>
                             </div>
@@ -785,26 +864,37 @@ def index():
                     toolbar = document.createElement('div');
                     toolbar.className = 'editor-toolbar';
                     toolbar.innerHTML = `
-                        <button class="btn btn-sm btn-primary" onclick="saveFile()">
-                            <i class="bi bi-save"></i> Save
-                        </button>
-                        <button class="btn btn-sm btn-secondary" onclick="cancelEdit()">
-                            <i class="bi bi-x"></i> Cancel
-                        </button>
-                        <button class="btn btn-sm btn-info" onclick="previewFile()">
-                            <i class="bi bi-eye"></i> Preview
-                        </button>
+                        <div class="file-actions">
+                            <button class="btn btn-outline-primary" onclick="saveFile()">
+                                <i class="bi bi-save"></i> Save
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="cancelEdit()">
+                                <i class="bi bi-x"></i> Cancel
+                            </button>
+                            <button class="btn btn-outline-info" onclick="previewFile()">
+                                <i class="bi bi-eye"></i> Preview
+                            </button>
+                        </div>
                     `;
                     editorContainer.appendChild(toolbar);
                 }
                 
-                // Create editor textarea if it doesn't exist
-                let textarea = editorContainer.querySelector('textarea');
-                if (!textarea) {
-                    textarea = document.createElement('textarea');
-                    textarea.id = 'editor';
-                    editorContainer.appendChild(textarea);
+                // Clean up existing editor if it exists
+                if (editor) {
+                    editor.toTextArea(); // Revert to original textarea
+                    editor = null;
                 }
+                
+                // Remove existing textarea if it exists
+                const existingTextarea = editorContainer.querySelector('textarea');
+                if (existingTextarea) {
+                    existingTextarea.remove();
+                }
+                
+                // Create fresh textarea
+                const textarea = document.createElement('textarea');
+                textarea.id = 'editor';
+                editorContainer.appendChild(textarea);
                 
                 // Try to acquire a lock on the file
                 try {
@@ -837,17 +927,15 @@ def index():
                         return;
                     }
                     
-                    // Initialize CodeMirror if not already initialized
-                    if (!editor) {
-                        editor = CodeMirror.fromTextArea(textarea, {
-                            mode: 'markdown',
-                            theme: '{{ editor_theme }}',
-                            lineNumbers: true,
-                            lineWrapping: true,
-                            matchBrackets: true,
-                            autoCloseBrackets: true
-                        });
-                    }
+                    // Initialize a fresh CodeMirror instance
+                    editor = CodeMirror.fromTextArea(textarea, {
+                        mode: 'markdown',
+                        theme: '{{ editor_theme }}',
+                        lineNumbers: true,
+                        lineWrapping: true,
+                        matchBrackets: true,
+                        autoCloseBrackets: true
+                    });
                     
                     // Set the content
                     editor.setValue(data.content);
@@ -1016,6 +1104,25 @@ def index():
                 // Show the modal
                 const previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
                 previewModal.show();
+                
+                // Initialize KaTeX for math equations
+                renderMathInElement(document.getElementById('previewModal'), {
+                    delimiters: [
+                        {left: "$$", right: "$$", display: true},
+                        {left: "$", right: "$", display: false}
+                    ],
+                    throwOnError: false
+                });
+                
+                // Initialize Mermaid diagrams
+                mermaid.initialize({
+                    startOnLoad: true,
+                    theme: 'default',
+                    securityLevel: 'loose'
+                });
+                mermaid.run({
+                    nodes: document.querySelectorAll('.mermaid')
+                });
             }
             
             // ---------------------------
@@ -1270,7 +1377,67 @@ def api_file():
             "codehilite",       # Enables syntax highlighting
             "nl2br",            # Converts single newlines to <br>
             "sane_lists",       # Fixes numbered list rendering
+            "attr_list",        # Adds support for attributes in lists
+            "def_list",         # Definition lists
+            "md_in_html",       # Markdown inside HTML
         ],
+    )
+
+    # Process wiki-links
+    html_content = re.sub(
+        r'\[\[(.*?)\]\]',
+        lambda m: f'<a href="#" class="wiki-link">{m.group(1)}</a>',
+        html_content
+    )
+
+    # Process tags
+    html_content = re.sub(
+        r'#(\w+)',
+        lambda m: f'<span class="tag">#{m.group(1)}</span>',
+        html_content
+    )
+
+    # Process mentions
+    html_content = re.sub(
+        r'@(\w+)',
+        lambda m: f'<span class="mention">@{m.group(1)}</span>',
+        html_content
+    )
+
+    # Process callouts
+    html_content = re.sub(
+        r'>\s*\[!(\w+)\](.*?)(?=\n\n|\Z)',
+        lambda m: f'<div class="callout callout-{m.group(1).lower()}">{m.group(2).strip()}</div>',
+        html_content,
+        flags=re.DOTALL
+    )
+
+    # Process task lists
+    html_content = re.sub(
+        r'- \[(x| )\] (.*)',
+        lambda m: f'<li class="task-list-item"><input type="checkbox" {"checked" if m.group(1) == "x" else ""}> {m.group(2)}</li>',
+        html_content
+    )
+
+    # Process math equations
+    html_content = re.sub(
+        r'\$\$(.*?)\$\$',
+        lambda m: f'<div class="math-display">{m.group(1)}</div>',
+        html_content,
+        flags=re.DOTALL
+    )
+    html_content = re.sub(
+        r'\$(.*?)\$',
+        lambda m: f'<span class="math-inline">{m.group(1)}</span>',
+        html_content
+    )
+
+    # Process Mermaid diagrams
+    html_content = re.sub(
+        r'```mermaid\n(.*?)\n```',
+        lambda m: f'<div class="mermaid">{m.group(1)}</div>',
+        html_content,
+        flags=re.DOTALL
     )
 
     # Apply Bootstrap styles to tables
