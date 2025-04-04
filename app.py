@@ -1371,15 +1371,15 @@ def api_file():
     html_content = markdown.markdown(
         content,
         extensions=[
+            "tables",           # Process tables first
             "fenced_code",      # Handles multi-line code blocks
-            "tables",           # Enables Markdown table rendering
             "extra",            # Adds support for footnotes, abbreviations, etc.
             "codehilite",       # Enables syntax highlighting
-            "nl2br",            # Converts single newlines to <br>
             "sane_lists",       # Fixes numbered list rendering
             "attr_list",        # Adds support for attributes in lists
             "def_list",         # Definition lists
             "md_in_html",       # Markdown inside HTML
+            "nl2br",            # Convert newlines to <br> AFTER table processing
         ],
     )
 
@@ -1441,8 +1441,16 @@ def api_file():
     )
 
     # Apply Bootstrap styles to tables
-    html_content = re.sub(r"<table>", '<table class="table table-bordered table-striped">', html_content)
+    html_content = re.sub(r"<table>", '<div class="table-responsive"><table class="table table-bordered table-striped">', html_content)
+    html_content = re.sub(r"</table>", '</table></div>', html_content)
+    
+    # Ensure table cells are properly styled
+    html_content = re.sub(r"<td>", '<td style="vertical-align: middle; padding: 8px;">', html_content)
+    html_content = re.sub(r"<th>", '<th style="vertical-align: middle; padding: 8px; background-color: #f8f9fa;">', html_content)
 
+    # Fix for empty table cells - ensure all <td></td> pairs have content
+    html_content = re.sub(r"<td[^>]*></td>", '<td style="vertical-align: middle; padding: 8px;">&nbsp;</td>', html_content)
+    
     return jsonify({"html": html_content})
 
 
@@ -1493,11 +1501,10 @@ def api_file_with_highlight():
     html_content = markdown.markdown(
         highlight_content,
         extensions=[
+            "tables",           # Process tables first
             "fenced_code",      # Handles multi-line code blocks
-            "tables",           # Enables Markdown table rendering
             "extra",            # Adds support for footnotes, abbreviations, etc.
             "codehilite",       # Enables syntax highlighting
-            "nl2br",            # Converts single newlines to <br>
             "sane_lists",       # Fixes numbered list rendering
         ],
     )
@@ -1512,7 +1519,15 @@ def api_file_with_highlight():
     )
 
     # Apply Bootstrap styles to tables
-    html_content = re.sub(r"<table>", '<table class="table table-bordered table-striped">', html_content)
+    html_content = re.sub(r"<table>", '<div class="table-responsive"><table class="table table-bordered">', html_content)
+    html_content = re.sub(r"</table>", '</table></div>', html_content)
+
+    # Ensure table cells are properly styled
+    html_content = re.sub(r"<td>", '<td style="vertical-align: middle; padding: 8px;">', html_content)
+    html_content = re.sub(r"<th>", '<th style="vertical-align: middle; padding: 8px; background-color: #f8f9fa;">', html_content)
+    
+    # Fix for empty table cells - ensure all <td></td> pairs have content
+    html_content = re.sub(r"<td[^>]*></td>", '<td style="vertical-align: middle; padding: 8px;">&nbsp;</td>', html_content)
 
     return jsonify({"html": html_content})
 
