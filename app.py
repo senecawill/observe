@@ -658,18 +658,29 @@ html_template = """
                     mermaid.initialize({
                         startOnLoad: false,
                         theme: 'default',
-                        securityLevel: 'loose'
+                        securityLevel: 'loose',
+                        fontFamily: 'monospace',
+                        flowchart: {
+                            useMaxWidth: true,
+                            htmlLabels: true
+                        }
                     });
                     
+                    // Use timeout to ensure DOM is fully ready
                     setTimeout(() => {
                         try {
+                            // Find all mermaid elements
+                            const mermaidElements = document.querySelectorAll('.mermaid');
+                            console.log(`Found ${mermaidElements.length} mermaid diagrams to render`);
+                            
+                            // Run mermaid render
                             mermaid.run({
-                                nodes: document.querySelectorAll('.mermaid')
+                                nodes: mermaidElements
                             });
                         } catch (e) {
                             console.error('Mermaid initialization failed:', e);
                         }
-                    }, 100);
+                    }, 300); // Increased timeout for better reliability
                 }
             } catch (error) {
                 console.error("Error in loadFile:", error);
@@ -1080,11 +1091,29 @@ html_template = """
             mermaid.initialize({
                 startOnLoad: true,
                 theme: 'default',
-                securityLevel: 'loose'
+                securityLevel: 'loose',
+                fontFamily: 'monospace',
+                flowchart: {
+                    useMaxWidth: true,
+                    htmlLabels: true
+                }
             });
-            mermaid.run({
-                nodes: document.querySelectorAll('.mermaid')
-            });
+            
+            // Use timeout to ensure DOM is fully ready
+            setTimeout(() => {
+                try {
+                    // Find all mermaid elements in the preview
+                    const mermaidElements = document.querySelectorAll('#previewModal .mermaid');
+                    console.log(`Found ${mermaidElements.length} mermaid diagrams in preview`);
+                    
+                    // Run mermaid render
+                    mermaid.run({
+                        nodes: mermaidElements
+                    });
+                } catch (e) {
+                    console.error('Mermaid preview initialization failed:', e);
+                }
+            }, 300);
         }
         
         // ---------------------------
@@ -1394,18 +1423,31 @@ html_template = """
             mermaid.initialize({
                 startOnLoad: false,
                 theme: 'default',
-                securityLevel: 'loose'
+                securityLevel: 'loose',
+                fontFamily: 'monospace',
+                flowchart: {
+                    useMaxWidth: true,
+                    htmlLabels: true
+                }
             });
             
+            // Use timeout to ensure DOM is fully ready
             setTimeout(() => {
                 try {
-                    mermaid.run({
-                        nodes: document.querySelectorAll('.mermaid')
-                    });
+                    // Find all mermaid elements on the page
+                    const mermaidElements = document.querySelectorAll('.mermaid');
+                    console.log(`Found ${mermaidElements.length} mermaid diagrams on page load`);
+                    
+                    if (mermaidElements.length > 0) {
+                        // Run mermaid render
+                        mermaid.run({
+                            nodes: mermaidElements
+                        });
+                    }
                 } catch (e) {
                     console.error('Mermaid initialization failed:', e);
                 }
-            }, 100);
+            }, 300); // Increased timeout for better reliability
         }
         
         document.addEventListener('DOMContentLoaded', () => {
@@ -1732,7 +1774,7 @@ def api_file():
         # Pre-process code blocks before any other markdown processing
         # Extract and store code blocks that would otherwise be affected by other processing
         code_blocks = {}
-        code_block_pattern = r'```(\w*)\n(.*?)\n```'
+        code_block_pattern = r'```(\w*)\s*\n(.*?)\n\s*```'
         
         def save_code_block(match):
             lang = match.group(1) or ''
@@ -1745,7 +1787,7 @@ def api_file():
 
         # Special handling for mermaid diagrams - we need to process these before markdown conversion
         mermaid_blocks = {}
-        mermaid_pattern = r'```mermaid\n(.*?)\n```'
+        mermaid_pattern = r'```mermaid\s*\n(.*?)\n\s*```'
         
         def save_mermaid_block(match):
             mermaid_content = match.group(1)
@@ -1810,7 +1852,7 @@ def api_file():
         # Process language-specific code blocks that might not have been correctly processed
         # This handles cases where ```python or ```cpp blocks might not render correctly
         html_content = re.sub(
-            r'<p>```(\w+)\s*(?:<br>)?\s*(.*?)\s*```\s*</p>',
+            r'<p>```(\w+)\s*(.*?)\s*```</p>',
             lambda m: f'<div class="codehilite"><pre><code class="language-{m.group(1)}">{m.group(2)}</code></pre></div>',
             html_content,
             flags=re.DOTALL
@@ -1818,7 +1860,7 @@ def api_file():
         
         # Also handle plain fenced code blocks without language identifier
         html_content = re.sub(
-            r'<p>```\s*(?:<br>)?\s*(.*?)\s*```\s*</p>',
+            r'<p>```\s*(.*?)\s*```</p>',
             lambda m: f'<div class="codehilite"><pre><code>{m.group(1)}</code></pre></div>',
             html_content,
             flags=re.DOTALL
@@ -1937,7 +1979,7 @@ def api_file_with_highlight():
     # Pre-process code blocks before any other markdown processing
     # Extract and store code blocks that would otherwise be affected by other processing
     code_blocks = {}
-    code_block_pattern = r'```(\w*)\n(.*?)\n```'
+    code_block_pattern = r'```(\w*)\s*\n(.*?)\n\s*```'
     
     def save_code_block(match):
         lang = match.group(1) or ''
@@ -1950,7 +1992,7 @@ def api_file_with_highlight():
 
     # Special handling for mermaid diagrams - we need to process these before markdown conversion
     mermaid_blocks = {}
-    mermaid_pattern = r'```mermaid\n(.*?)\n```'
+    mermaid_pattern = r'```mermaid\s*\n(.*?)\n\s*```'
     
     def save_mermaid_block(match):
         mermaid_content = match.group(1)
