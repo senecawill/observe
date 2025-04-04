@@ -92,6 +92,12 @@ html_template = """
         .collapse {
             transition: height 0.2s ease;
         }
+        .active-file {
+            background-color: #e0f7fa;
+            border-radius: 3px;
+            padding: 2px 4px;
+            font-weight: bold;
+        }
         mark {
             background-color: yellow;
         }
@@ -586,6 +592,7 @@ html_template = """
                     // Hide .md extension for display
                     fileEl.textContent = stripMdExtension(node.name);
                     fileEl.className = "file-item";
+                    fileEl.setAttribute("data-path", node.path);
                     fileEl.onclick = () => loadFile(node.path);
 
                     li.appendChild(icon);
@@ -647,6 +654,9 @@ html_template = """
                     
                     // Update breadcrumb navigation
                     updateBreadcrumbs(filePath);
+                    
+                    // Highlight the active file in the file tree
+                    highlightActiveFile(filePath);
                     
                     // Attempt to scroll to the highlight
                     const highlightEl = document.getElementById("search-highlight");
@@ -738,6 +748,48 @@ html_template = """
  
                 // Update breadcrumb navigation
                 updateBreadcrumbs(filePath);
+                
+                // Highlight the active file in the file tree
+                highlightActiveFile(filePath);
+            }
+        }
+
+        // ---------------------------
+        //  Highlight the active file in file tree
+        // ---------------------------
+        function highlightActiveFile(filePath) {
+            // Remove any existing highlights
+            const activeFiles = document.querySelectorAll('.active-file');
+            activeFiles.forEach(el => el.classList.remove('active-file'));
+            
+            // Find all file items in the tree
+            const fileItems = document.querySelectorAll('.file-item');
+            
+            // Find the file item that corresponds to the current file
+            for (const fileItem of fileItems) {
+                const itemPath = fileItem.getAttribute('data-path');
+                if (itemPath === filePath) {
+                    fileItem.classList.add('active-file');
+                    
+                    // Expand parent directories to show the active file
+                    let parent = fileItem.closest('ul');
+                    while (parent && !parent.id.includes('fileTree')) {
+                        parent.classList.add('show');
+                        const folder = parent.previousElementSibling;
+                        if (folder && folder.classList.contains('directory-toggle')) {
+                            // Update folder icon to open
+                            const icon = folder.previousElementSibling;
+                            if (icon && icon.classList.contains('bi-folder')) {
+                                icon.className = "bi bi-folder2-open directory-toggle me-1 text-warning";
+                            }
+                        }
+                        parent = parent.parentElement.closest('ul');
+                    }
+                    
+                    // Scroll to the active file in the sidebar
+                    fileItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    break;
+                }
             }
         }
 
