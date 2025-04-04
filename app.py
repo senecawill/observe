@@ -1367,20 +1367,83 @@ def api_file():
     # Normalize newlines to Unix-style
     content = content.replace("\r\n", "\n").replace("\r", "\n")
 
+    # Pre-process code blocks before any other markdown processing
+    # Extract and store code blocks that would otherwise be affected by other processing
+    code_blocks = {}
+    code_block_pattern = r'```(\w*)\n(.*?)\n```'
+    
+    def save_code_block(match):
+        lang = match.group(1) or ''
+        code = match.group(2)
+        placeholder = f'CODE_BLOCK_PLACEHOLDER_{len(code_blocks)}'
+        code_blocks[placeholder] = (lang, code)
+        return placeholder
+    
+    content = re.sub(code_block_pattern, save_code_block, content, flags=re.DOTALL)
+
+    # Pre-process pipe tables - convert Markdown pipe tables to HTML tables
+    pipe_table_pattern = r'^\|(.+)\|\s*$\n^\|[-:\|\s]+\|\s*$\n((?:^\|.+\|\s*$\n)+)'
+    
+    def convert_pipe_table_to_html(match):
+        header_row = match.group(1).strip()
+        header_cells = [cell.strip() for cell in header_row.split('|') if cell.strip()]
+        
+        content_rows = match.group(2).strip().split('\n')
+        rows_html = []
+        
+        # Create header HTML
+        header_html = '<tr>\n' + ''.join([f'<th>{cell}</th>\n' for cell in header_cells]) + '</tr>'
+        
+        # Process content rows
+        for row in content_rows:
+            cells = [cell.strip() for cell in row.split('|')[1:-1]]  # Skip first and last empty cells
+            row_html = '<tr>\n' + ''.join([f'<td>{cell}</td>\n' for cell in cells]) + '</tr>'
+            rows_html.append(row_html)
+        
+        # Combine into final table HTML
+        table_html = f'<table>\n<thead>\n{header_html}\n</thead>\n<tbody>\n{"".join(rows_html)}\n</tbody>\n</table>'
+        return table_html
+    
+    # Apply the pipe table conversion before markdown processing
+    content = re.sub(pipe_table_pattern, convert_pipe_table_to_html, content, flags=re.MULTILINE)
+
     # Convert Markdown to HTML with correct list rendering
     html_content = markdown.markdown(
         content,
         extensions=[
-            "tables",           # Process tables first
-            "fenced_code",      # Handles multi-line code blocks
+            "fenced_code",      # Handle code blocks FIRST
+            "codehilite",       # Syntax highlighting for code blocks
+            "tables",           # Then process tables
             "extra",            # Adds support for footnotes, abbreviations, etc.
-            "codehilite",       # Enables syntax highlighting
             "sane_lists",       # Fixes numbered list rendering
             "attr_list",        # Adds support for attributes in lists
             "def_list",         # Definition lists
             "md_in_html",       # Markdown inside HTML
             "nl2br",            # Convert newlines to <br> AFTER table processing
         ],
+    )
+
+    # Restore code blocks
+    for placeholder, (lang, code) in code_blocks.items():
+        lang_attr = f' class="language-{lang}"' if lang else ''
+        code_html = f'<div class="codehilite"><pre><code{lang_attr}>{code}</code></pre></div>'
+        html_content = html_content.replace(placeholder, code_html)
+
+    # Process language-specific code blocks that might not have been correctly processed
+    # This handles cases where ```python or ```cpp blocks might not render correctly
+    html_content = re.sub(
+        r'<p>```(\w+)\s*(?:<br>)?\s*(.*?)\s*```\s*</p>',
+        lambda m: f'<div class="codehilite"><pre><code class="language-{m.group(1)}">{m.group(2)}</code></pre></div>',
+        html_content,
+        flags=re.DOTALL
+    )
+    
+    # Also handle plain fenced code blocks without language identifier
+    html_content = re.sub(
+        r'<p>```\s*(?:<br>)?\s*(.*?)\s*```\s*</p>',
+        lambda m: f'<div class="codehilite"><pre><code>{m.group(1)}</code></pre></div>',
+        html_content,
+        flags=re.DOTALL
     )
 
     # Process wiki-links
@@ -1497,17 +1560,63 @@ def api_file_with_highlight():
             + content[end:]
         )
 
+    # Pre-process code blocks before any other markdown processing
+    # Extract and store code blocks that would otherwise be affected by other processing
+    code_blocks = {}
+    code_block_pattern = r'```(\w*)\n(.*?)\n```'
+    
+    def save_code_block(match):
+        lang = match.group(1) or ''
+        code = match.group(2)
+        placeholder = f'CODE_BLOCK_PLACEHOLDER_{len(code_blocks)}'
+        code_blocks[placeholder] = (lang, code)
+        return placeholder
+    
+    highlight_content = re.sub(code_block_pattern, save_code_block, highlight_content, flags=re.DOTALL)
+
+    # Pre-process pipe tables - convert Markdown pipe tables to HTML tables
+    pipe_table_pattern = r'^\|(.+)\|\s*$\n^\|[-:\|\s]+\|\s*$\n((?:^\|.+\|\s*$\n)+)'
+    
+    def convert_pipe_table_to_html(match):
+        header_row = match.group(1).strip()
+        header_cells = [cell.strip() for cell in header_row.split('|') if cell.strip()]
+        
+        content_rows = match.group(2).strip().split('\n')
+        rows_html = []
+        
+        # Create header HTML
+        header_html = '<tr>\n' + ''.join([f'<th>{cell}</th>\n' for cell in header_cells]) + '</tr>'
+        
+        # Process content rows
+        for row in content_rows:
+            cells = [cell.strip() for cell in row.split('|')[1:-1]]  # Skip first and last empty cells
+            row_html = '<tr>\n' + ''.join([f'<td>{cell}</td>\n' for cell in cells]) + '</tr>'
+            rows_html.append(row_html)
+        
+        # Combine into final table HTML
+        table_html = f'<table>\n<thead>\n{header_html}\n</thead>\n<tbody>\n{"".join(rows_html)}\n</tbody>\n</table>'
+        return table_html
+    
+    # Apply the pipe table conversion before markdown processing
+    highlight_content = re.sub(pipe_table_pattern, convert_pipe_table_to_html, highlight_content, flags=re.MULTILINE)
+
     # Convert Markdown to HTML with correct list rendering
     html_content = markdown.markdown(
         highlight_content,
         extensions=[
-            "tables",           # Process tables first
-            "fenced_code",      # Handles multi-line code blocks
+            "fenced_code",      # Handle code blocks FIRST
+            "codehilite",       # Syntax highlighting for code blocks
+            "tables",           # Then process tables
             "extra",            # Adds support for footnotes, abbreviations, etc.
-            "codehilite",       # Enables syntax highlighting
             "sane_lists",       # Fixes numbered list rendering
         ],
     )
+
+    # Restore code blocks
+    for placeholder, (lang, code) in code_blocks.items():
+        lang_attr = f' class="language-{lang}"' if lang else ''
+        code_html = f'<div class="codehilite"><pre><code{lang_attr}>{code}</code></pre></div>'
+        html_content = html_content.replace(placeholder, code_html)
 
     # Replace highlight placeholders with actual HTML
     html_content = html_content.replace(
