@@ -409,17 +409,82 @@ def index():
                 right: 20px;
                 z-index: 1000;
             }
+            
+            /* Current file path in navbar */
+            #currentFilePath {
+                color: #c5c5c5;
+                font-size: 0.9em;
+                max-width: 300px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                padding: 3px 8px;
+                border-radius: 4px;
+                background-color: rgba(255,255,255,0.1);
+            }
+            
+            /* Breadcrumb styling for navbar */
+            .navbar .breadcrumb {
+                background-color: transparent;
+                margin: 0;
+                padding: 0;
+                display: flex;
+                flex-wrap: nowrap;
+                align-items: center;
+            }
+            
+            .navbar .breadcrumb-item {
+                color: #c5c5c5;
+                font-size: 0.9em;
+                max-width: 150px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                display: inline-block;
+            }
+            
+            .navbar .breadcrumb-item a {
+                color: #eeeeee;
+                text-decoration: none;
+                background-color: rgba(255,255,255,0.1);
+                padding: 3px 8px;
+                border-radius: 4px;
+            }
+            
+            .navbar .breadcrumb-item a:hover {
+                text-decoration: none;
+                background-color: rgba(255,255,255,0.2);
+            }
+            
+            .navbar .breadcrumb-item.active {
+                color: #ffffff;
+                background-color: rgba(255,255,255,0.15);
+                padding: 3px 8px;
+                border-radius: 4px;
+            }
+            
+            .navbar .breadcrumb-item+.breadcrumb-item::before {
+                color: #6c757d;
+                content: "/";
+                padding: 0 8px;
+            }
         </style>
     </head>
     <body>
         <!-- Navbar -->
         <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
             <div class="container-fluid">
-                <a class="navbar-brand" href="#">
+                <a class="navbar-brand" href="/">
                     <i class="bi bi-journal-text"></i> {{ page_title }}  <!-- Corrected and ensured proper formatting -->
                 </a>
-                <div class="ms-auto">
-                    <button class="btn btn-outline-light" id="newFileBtn">
+                <div class="d-flex align-items-center">
+                    <nav aria-label="breadcrumb" class="me-3 d-none d-lg-block">
+                        <ol class="breadcrumb m-0 p-0 navbar-text" id="fileBreadcrumb"></ol>
+                    </nav>
+                    <button class="btn btn-outline-light me-2" id="homeBtn">
+                        <i class="bi bi-house"></i> Home
+                    </button>
+                    <button class="btn btn-outline-light me-2" id="newFileBtn">
                         <i class="bi bi-file-earmark-plus"></i> New File
                     </button>
                     <button class="btn btn-outline-light" id="newFolderBtn">
@@ -592,6 +657,59 @@ def index():
                 return parts.join("/");
             }
             
+            // Update breadcrumb navigation with file path
+            function updateBreadcrumbs(filePath) {
+                const breadcrumb = document.getElementById('fileBreadcrumb');
+                breadcrumb.innerHTML = '';
+                
+                // Split the path into parts
+                const parts = filePath.split('/');
+                const fileName = parts.pop();
+                
+                // Add Home crumb
+                const homeCrumb = document.createElement('li');
+                homeCrumb.className = 'breadcrumb-item';
+                const homeLink = document.createElement('a');
+                homeLink.href = '/';
+                homeLink.textContent = 'Home';
+                homeLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    goHome();
+                });
+                homeCrumb.appendChild(homeLink);
+                breadcrumb.appendChild(homeCrumb);
+                
+                // Add directory parts
+                let currentPath = '';
+                parts.forEach((part, index) => {
+                    if (part) {  // Skip empty parts
+                        currentPath += part + '/';
+                        
+                        const dirCrumb = document.createElement('li');
+                        dirCrumb.className = 'breadcrumb-item';
+                        
+                        const dirLink = document.createElement('a');
+                        dirLink.href = `/view/${encodeURIComponent(currentPath)}`;
+                        dirLink.textContent = part;
+                        dirLink.setAttribute('data-path', currentPath);
+                        dirLink.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            // We don't have a direct function to navigate to folders,
+                            // but we could implement one in the future
+                        });
+                        
+                        dirCrumb.appendChild(dirLink);
+                        breadcrumb.appendChild(dirCrumb);
+                    }
+                });
+                
+                // Add the file name as the active item
+                const fileCrumb = document.createElement('li');
+                fileCrumb.className = 'breadcrumb-item active';
+                fileCrumb.textContent = stripMdExtension(fileName);
+                breadcrumb.appendChild(fileCrumb);
+            }
+            
             // Show a toast notification
             function showToast(message, type = 'success') {
                 const toastContainer = document.querySelector('.toast-container');
@@ -723,6 +841,31 @@ def index():
                             ${data.html}
                         </div>
                     `;
+                    
+                    // Update URL without refreshing page
+                    const safePath = encodeURIComponent(filePath);
+                    history.pushState({ filePath: filePath }, displayName, `/view/${safePath}`);
+                    document.title = `${displayName} - {{ page_title }}`;
+                    
+                    // Update breadcrumb navigation
+                    updateBreadcrumbs(filePath);
+                    
+                    // Initialize Mermaid diagrams after content is loaded
+                    mermaid.initialize({
+                        startOnLoad: false,
+                        theme: 'default',
+                        securityLevel: 'loose'
+                    });
+                    
+                    setTimeout(() => {
+                        try {
+                            mermaid.run({
+                                nodes: document.querySelectorAll('.mermaid')
+                            });
+                        } catch (e) {
+                            console.error('Mermaid initialization failed:', e);
+                        }
+                    }, 100);
                 }
             }
 
@@ -760,11 +903,37 @@ def index():
                         </div>
                     `;
 
+                    // Update URL without refreshing page, including highlight info
+                    const safePath = encodeURIComponent(filePath);
+                    const url = `/view/${safePath}?highlight=true&start=${start}&length=${length}`;
+                    history.pushState({ filePath: filePath, start: start, length: length }, displayName, url);
+                    document.title = `${displayName} - {{ page_title }}`;
+
+                    // Update breadcrumb navigation
+                    updateBreadcrumbs(filePath);
+
                     // Attempt to scroll to the highlight
                     const highlightEl = document.getElementById("search-highlight");
                     if (highlightEl) {
                         highlightEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }
+                    
+                    // Initialize Mermaid diagrams after content is loaded
+                    mermaid.initialize({
+                        startOnLoad: false,
+                        theme: 'default',
+                        securityLevel: 'loose'
+                    });
+                    
+                    setTimeout(() => {
+                        try {
+                            mermaid.run({
+                                nodes: document.querySelectorAll('.mermaid')
+                            });
+                        } catch (e) {
+                            console.error('Mermaid initialization failed:', e);
+                        }
+                    }, 100);
                 }
             }
 
@@ -1326,12 +1495,89 @@ def index():
             // ---------------------------
             document.getElementById('newFileBtn').addEventListener('click', newFile);
             document.getElementById('newFolderBtn').addEventListener('click', newFolder);
+            document.getElementById('homeBtn').addEventListener('click', goHome);
+            
+            // Function to return to the home page
+            function goHome() {
+                // Clear content area
+                document.getElementById('content').innerHTML = '<p class="text-muted">Select a file from the sidebar...</p>';
+                
+                // Update URL
+                history.pushState(null, '{{ page_title }}', '/');
+                document.title = '{{ page_title }}';
+                
+                // Clear breadcrumbs
+                document.getElementById('fileBreadcrumb').innerHTML = '';
+            }
+            
+            // Handle browser back/forward navigation
+            window.addEventListener('popstate', (event) => {
+                if (event.state && event.state.filePath) {
+                    if (event.state.start !== undefined && event.state.length !== undefined) {
+                        loadFileWithHighlight(event.state.filePath, event.state.start, event.state.length);
+                    } else {
+                        loadFile(event.state.filePath);
+                    }
+                } else {
+                    // If navigating to root, clear content area
+                    document.getElementById('content').innerHTML = '<p class="text-muted">Select a file from the sidebar...</p>';
+                    document.title = '{{ page_title }}';
+                    document.getElementById('fileBreadcrumb').innerHTML = '';
+                }
+            });
+            
+            // Function to check URL for file path
+            function checkUrlForFilePath() {
+                const path = window.location.pathname;
+                if (path.startsWith('/view/')) {
+                    const filePath = decodeURIComponent(path.substring(6)); // remove '/view/'
+                    
+                    // Check for highlight parameters
+                    const urlParams = new URLSearchParams(window.location.search);
+                    if (urlParams.has('highlight') && urlParams.has('start') && urlParams.has('length')) {
+                        const start = parseInt(urlParams.get('start'));
+                        const length = parseInt(urlParams.get('length'));
+                        loadFileWithHighlight(filePath, start, length);
+                    } else {
+                        loadFile(filePath);
+                    }
+                    return true;
+                }
+                return false;
+            }
             
             // Initial load
-            fetchTree();
+            async function init() {
+                await fetchTree();
+                
+                // Check if URL contains a file path
+                if (!checkUrlForFilePath()) {
+                    // If not, just display the default content
+                    document.getElementById('content').innerHTML = '<p class="text-muted">Select a file from the sidebar...</p>';
+                }
+            }
+            
+            init();
+            
+            // Initialize mermaid
+            document.addEventListener('DOMContentLoaded', () => {
+                mermaid.initialize({
+                    startOnLoad: true,
+                    theme: 'default',
+                    securityLevel: 'loose'
+                });
+            });
         </script>
     </body>
     </html>
+    """
+    return render_template_string(html_template, page_title=PAGE_TITLE, editor_theme=EDITOR_THEME, auto_save_interval=AUTO_SAVE_INTERVAL)
+
+@app.route("/view/<path:file_path>")
+def view_file(file_path):
+    """
+    Serve the main page but with a specific file loaded.
+    The JavaScript will detect the path and load the file.
     """
     return render_template_string(html_template, page_title=PAGE_TITLE, editor_theme=EDITOR_THEME, auto_save_interval=AUTO_SAVE_INTERVAL)
 
@@ -1381,6 +1627,18 @@ def api_file():
     
     content = re.sub(code_block_pattern, save_code_block, content, flags=re.DOTALL)
 
+    # Special handling for mermaid diagrams - we need to process these before markdown conversion
+    mermaid_blocks = {}
+    mermaid_pattern = r'```mermaid\n(.*?)\n```'
+    
+    def save_mermaid_block(match):
+        mermaid_content = match.group(1)
+        placeholder = f'MERMAID_PLACEHOLDER_{len(mermaid_blocks)}'
+        mermaid_blocks[placeholder] = mermaid_content
+        return placeholder
+    
+    content = re.sub(mermaid_pattern, save_mermaid_block, content, flags=re.DOTALL)
+
     # Pre-process pipe tables - convert Markdown pipe tables to HTML tables
     pipe_table_pattern = r'^\|(.+)\|\s*$\n^\|[-:\|\s]+\|\s*$\n((?:^\|.+\|\s*$\n)+)'
     
@@ -1428,6 +1686,10 @@ def api_file():
         lang_attr = f' class="language-{lang}"' if lang else ''
         code_html = f'<div class="codehilite"><pre><code{lang_attr}>{code}</code></pre></div>'
         html_content = html_content.replace(placeholder, code_html)
+
+    # Restore mermaid blocks
+    for placeholder, mermaid_content in mermaid_blocks.items():
+        html_content = html_content.replace(placeholder, f'<div class="mermaid">{mermaid_content}</div>')
 
     # Process language-specific code blocks that might not have been correctly processed
     # This handles cases where ```python or ```cpp blocks might not render correctly
@@ -1493,14 +1755,6 @@ def api_file():
         r'\$(.*?)\$',
         lambda m: f'<span class="math-inline">{m.group(1)}</span>',
         html_content
-    )
-
-    # Process Mermaid diagrams
-    html_content = re.sub(
-        r'```mermaid\n(.*?)\n```',
-        lambda m: f'<div class="mermaid">{m.group(1)}</div>',
-        html_content,
-        flags=re.DOTALL
     )
 
     # Apply Bootstrap styles to tables
@@ -1574,6 +1828,18 @@ def api_file_with_highlight():
     
     highlight_content = re.sub(code_block_pattern, save_code_block, highlight_content, flags=re.DOTALL)
 
+    # Special handling for mermaid diagrams - we need to process these before markdown conversion
+    mermaid_blocks = {}
+    mermaid_pattern = r'```mermaid\n(.*?)\n```'
+    
+    def save_mermaid_block(match):
+        mermaid_content = match.group(1)
+        placeholder = f'MERMAID_PLACEHOLDER_{len(mermaid_blocks)}'
+        mermaid_blocks[placeholder] = mermaid_content
+        return placeholder
+    
+    highlight_content = re.sub(mermaid_pattern, save_mermaid_block, highlight_content, flags=re.DOTALL)
+
     # Pre-process pipe tables - convert Markdown pipe tables to HTML tables
     pipe_table_pattern = r'^\|(.+)\|\s*$\n^\|[-:\|\s]+\|\s*$\n((?:^\|.+\|\s*$\n)+)'
     
@@ -1617,6 +1883,10 @@ def api_file_with_highlight():
         lang_attr = f' class="language-{lang}"' if lang else ''
         code_html = f'<div class="codehilite"><pre><code{lang_attr}>{code}</code></pre></div>'
         html_content = html_content.replace(placeholder, code_html)
+
+    # Restore mermaid blocks
+    for placeholder, mermaid_content in mermaid_blocks.items():
+        html_content = html_content.replace(placeholder, f'<div class="mermaid">{mermaid_content}</div>')
 
     # Replace highlight placeholders with actual HTML
     html_content = html_content.replace(
