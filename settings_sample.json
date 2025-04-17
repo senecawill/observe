@@ -1,0 +1,6 @@
+{
+    "content_root": "/path/to/documents",
+    "page_title": "Page Title",
+    "editor_theme": "default",
+    "auto_save_interval": 30
+}

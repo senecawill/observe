@@ -749,15 +749,15 @@ html_template = """
                 // Update breadcrumb navigation
                 updateBreadcrumbs(filePath);
                 
-                // Highlight the active file in the file tree
-                highlightActiveFile(filePath);
+                // Highlight the active file in the file tree but don't scroll to it
+                highlightActiveFile(filePath, false);
             }
         }
 
         // ---------------------------
         //  Highlight the active file in file tree
         // ---------------------------
-        function highlightActiveFile(filePath) {
+        function highlightActiveFile(filePath, scrollToFile = true) {
             // Remove any existing highlights
             const activeFiles = document.querySelectorAll('.active-file');
             activeFiles.forEach(el => el.classList.remove('active-file'));
@@ -786,8 +786,10 @@ html_template = """
                         parent = parent.parentElement.closest('ul');
                     }
                     
-                    // Scroll to the active file in the sidebar
-                    fileItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Only scroll to the file if scrollToFile is true
+                    if (scrollToFile) {
+                        fileItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
                     break;
                 }
             }
@@ -2364,4 +2366,4 @@ def api_directory_delete():
 # Main entry point
 # -------------------------------------------------------------------
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5001, debug=True)

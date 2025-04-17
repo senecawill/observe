@@ -2,7 +2,7 @@
 
 ## Overview
 
-ObServe is a lightweight web server built using Python and Flask that serves a directory tree of Markdown (`.md`) files stored in an Obsidian vault. The server provides a user interface similar to Obsidian’s, including:
+ObServe is a lightweight web server built using Python and Flask that serves a directory tree of Markdown (`.md`) files stored in an Obsidian vault. The server provides a user interface similar to Obsidian's, including:
 
 - A dynamically generated sidebar tree reflecting the folder structure, skipping `.obsidian`.
 - Rendered Markdown content with support for tables, fenced code blocks, and syntax highlighting.
@@ -22,20 +22,20 @@ ObServe is a lightweight web server built using Python and Flask that serves a d
 5. **File Title Display**: When loading a file, displays its title (minus `.md`) at the top of the document.
 
 ### Markdown Rendering
-- Utilizes Python’s `markdown` package with extensions for fenced code blocks, tables, syntax highlighting, and handling single newlines (`nl2br`).
+- Utilizes Python's `markdown` package with extensions for fenced code blocks, tables, syntax highlighting, and handling single newlines (`nl2br`).
 - Applies Bootstrap styles to tables for better presentation.
 
 ### Full-Text Search
 1. **Naive Substring Search**: Converts each file's content to lowercase and matches against the query.
 2. **Search Bar**: Users can enter a query in the search input at the top of the sidebar.
-3. **Collapsible Results**: Displays each file’s matches in a Bootstrap 5 accordion.
+3. **Collapsible Results**: Displays each file's matches in a Bootstrap 5 accordion.
 4. **Clickable Snippets**: Each snippet link opens the file at the matching location, highlighting the text.
 5. **Clear Button**: A small icon button next to the search bar clears the current search results.
 
 ### Web Interface
 - Uses Bootstrap 5 for layout (grid, navbar, accordion, buttons).
 - Sidebar displays the search bar and clear button.
-- Content area shows the selected file’s rendered Markdown with a heading displaying the file’s name minus `.md`.
+- Content area shows the selected file's rendered Markdown with a heading displaying the file's name minus `.md`.
 - Search results are displayed in an accordion format that can be expanded or collapsed.
 
 ### Backend API
@@ -73,6 +73,58 @@ ObServe is a lightweight web server built using Python and Flask that serves a d
    }
    ```
 
+### Settings Configuration
+
+The `settings.json` file contains the following configuration options:
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `content_root` | The root directory where your markdown files are stored | `/default/path` |
+| `page_title` | The title displayed in the browser tab and header | `Default Page Title` |
+| `editor_theme` | The theme for the code editor (e.g., "default", "dark", etc.) | `default` |
+| `auto_save_interval` | How often to auto-save changes (in seconds) | `30` |
+
+Example configuration:
+```json
+{
+    "content_root": "/path/to/documents",
+    "page_title": "My Documentation",
+    "editor_theme": "dark",
+    "auto_save_interval": 60
+}
+```
+
+Note: The `settings.json` file is not tracked in version control (it's in `.gitignore`) to allow for local configuration.
+
+### Using settings_sample.json
+
+The repository includes a `settings_sample.json` file that you can use as a template for your configuration:
+
+1. **Copy the sample file**:
+   ```bash
+   cp settings_sample.json settings.json
+   ```
+
+2. **Modify the settings**:
+   - Open `settings.json` in your preferred text editor
+   - Update the values according to your needs
+   - Save the file
+
+The sample file contains default values that you can modify:
+```json
+{
+    "content_root": "/path/to/documents",
+    "page_title": "My Documentation",
+    "editor_theme": "default",
+    "auto_save_interval": 30
+}
+```
+
+This approach allows you to:
+- Keep your actual settings private (not tracked in git)
+- Have a reference for all available settings
+- Start with sensible defaults
+
 ### Running with Flask
 
 1. **Run Your Flask App**
@@ -94,11 +146,11 @@ ObServe is a lightweight web server built using Python and Flask that serves a d
 
 2. **Keep It Running**
 
-   If you close your SSH session, the server stops. For a small environment, you can run it in `tmux` or `screen`, or set up a systemd service (see “Systemd Service” below).
+   If you close your SSH session, the server stops. For a small environment, you can run it in `tmux` or `screen`, or set up a systemd service (see "Systemd Service" below).
 
 ### Running with Gunicorn
 
-**Gunicorn** is a lightweight WSGI server that’s more production-ready than Flask’s built-in server.
+**Gunicorn** is a lightweight WSGI server that's more production-ready than Flask's built-in server.
 
 1. **Install Gunicorn**
 
@@ -182,5 +234,5 @@ Now your Flask/Gunicorn app will start at boot and run in the background.
 
 ### Accessing the Server Internally
 
-- Ensure port 5000 (or whichever port you used) is open on your server’s firewall (e.g., `ufw allow 5000/tcp` if you use UFW).
+- Ensure port 5000 (or whichever port you used) is open on your server's firewall (e.g., `ufw allow 5000/tcp` if you use UFW).
 - From any machine on the same internal network, open `http://<server-ip>:5000`.
