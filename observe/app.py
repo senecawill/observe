@@ -51,15 +51,10 @@ html_template = """
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" 
       rel="stylesheet"
     >
-    <!-- Bootstrap Icons -->
+    <!-- Bootstrap Icons (optional) -->
     <link 
       rel="stylesheet" 
       href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
-    >
-    <!-- Font Awesome -->
-    <link 
-      rel="stylesheet" 
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
     >
     <!-- CodeMirror CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
@@ -257,56 +252,6 @@ html_template = """
             content: "/";
             padding: 0 8px;
         }
-        /* Settings Modal */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-        }
-        .modal-content {
-            background-color: var(--bg-color, #fff);
-            margin: 15% auto;
-            padding: 20px;
-            border: 1px solid var(--border-color, #ddd);
-            width: 80%;
-            max-width: 500px;
-            border-radius: 5px;
-        }
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .modal-header h2 {
-            margin: 0;
-        }
-        .close {
-            color: var(--text-color, #666);
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .close:hover {
-            color: var(--accent-color, #000);
-        }
-        .setting-item {
-            margin-bottom: 20px;
-        }
-        .setting-input {
-            width: 100%;
-            padding: 8px;
-            margin: 8px 0;
-            border: 1px solid var(--border-color, #ddd);
-            border-radius: 4px;
-            background-color: var(--input-bg, #fff);
-            color: var(--text-color, #333);
-        }
     </style>
 </head>
 <body>
@@ -314,7 +259,7 @@ html_template = """
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
             <a class="navbar-brand" href="/">
-                <i class="bi bi-journal-text"></i> {{ page_title }}
+                <i class="bi bi-journal-text"></i> {{ page_title }}  <!-- Corrected and ensured proper formatting -->
             </a>
             <div class="d-flex align-items-center">
                 <nav aria-label="breadcrumb" class="me-3 d-none d-lg-block">
@@ -323,32 +268,15 @@ html_template = """
                 <button class="btn btn-outline-light me-2" id="homeBtn">
                     <i class="bi bi-house"></i> Home
                 </button>
-                <button class="btn btn-danger me-2" id="hardResetBtn" onclick="hardReset()">
-                    <i class="bi bi-arrow-clockwise"></i> Hard Reset
+                <button class="btn btn-outline-light me-2" id="newFileBtn">
+                    <i class="bi bi-file-earmark-plus"></i> New File
                 </button>
-                <button class="btn btn-outline-light" id="settings-btn" title="Settings">
-                    <i class="fas fa-cog"></i>
+                <button class="btn btn-outline-light" id="newFolderBtn">
+                    <i class="bi bi-folder-plus"></i> New Folder
                 </button>
             </div>
         </div>
     </nav>
-
-    <!-- Settings Modal -->
-    <div id="settings-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Settings</h2>
-                <span class="close">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="setting-item">
-                    <label for="page-title-input">Page Title:</label>
-                    <input type="text" id="page-title-input" class="setting-input">
-                    <button id="save-title-btn" class="btn btn-primary">Save</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Main container -->
     <div class="container-fluid flex-grow-1">
@@ -501,70 +429,7 @@ html_template = """
         //  UTILS
         // ---------------------------
         function stripMdExtension(filename) {
-            return filename.replace(/\.md$/, '');
-        }
-
-        // Settings functionality
-        const settingsBtn = document.getElementById('settings-btn');
-        const settingsModal = document.getElementById('settings-modal');
-        const closeBtn = document.querySelector('.close');
-        const pageTitleInput = document.getElementById('page-title-input');
-        const saveTitleBtn = document.getElementById('save-title-btn');
-        const pageTitle = document.querySelector('.navbar-brand');
-
-        // Load current page title
-        fetch('/api/settings')
-            .then(response => response.json())
-            .then(data => {
-                pageTitleInput.value = data.page_title;
-            });
-
-        // Open settings modal
-        settingsBtn.onclick = function() {
-            settingsModal.style.display = "block";
-        }
-
-        // Close settings modal
-        closeBtn.onclick = function() {
-            settingsModal.style.display = "none";
-        }
-
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            if (event.target == settingsModal) {
-                settingsModal.style.display = "none";
-            }
-        }
-
-        // Save page title
-        saveTitleBtn.onclick = function() {
-            const newTitle = pageTitleInput.value.trim();
-            if (newTitle) {
-                fetch('/api/settings', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        page_title: newTitle
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        pageTitle.innerHTML = `<i class="bi bi-journal-text"></i> ${newTitle}`;
-                        document.title = newTitle;
-                        settingsModal.style.display = "none";
-                        showToast('Page title updated successfully');
-                    } else {
-                        showToast('Failed to update page title', 'error');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showToast('Failed to update page title', 'error');
-                });
-            }
+            return filename.replace(/\\.md$/i, "");
         }
 
         // For display in search results (path minus .md on last segment)
@@ -686,8 +551,6 @@ html_template = """
                 if(node.type === "directory") {
                     // Directory item
                     const li = document.createElement("li");
-                    li.setAttribute("data-path", node.path); // Add data-path for event delegation
-                    li.setAttribute("data-type", "directory");
                     
                     // Toggle icon
                     const icon = document.createElement("i");
@@ -722,8 +585,6 @@ html_template = """
                 } else if(node.type === "file") {
                     // File item
                     const li = document.createElement("li");
-                    li.setAttribute("data-path", node.path);
-                    li.setAttribute("data-type", "file");
                     const icon = document.createElement("i");
                     icon.className = "bi bi-file-earmark-text me-1 text-secondary";
                     
@@ -939,83 +800,67 @@ html_template = """
         // ---------------------------
         async function search() {
             const query = document.getElementById("searchBox").value.trim();
-            if (!query) return;
+            if(!query) return;
 
-            try {
-                const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-                const results = await response.json();
-                const accordion = document.getElementById("searchAccordion");
-                accordion.innerHTML = "";
+            const resp = await fetch("/api/search?q=" + encodeURIComponent(query));
+            const results = await resp.json();
+            const accordion = document.getElementById("searchAccordion");
+            accordion.innerHTML = "";
 
-                if (results.length === 0) {
-                    accordion.innerHTML = "<div class='alert alert-info'>No results found.</div>";
-                    return;
-                }
-
-                results.forEach((result, index) => {
-                    const card = document.createElement("div");
-                    card.className = "accordion-item";
-                    
-                    const header = document.createElement("h2");
-                    header.className = "accordion-header";
-                    header.id = `heading${index}`;
-                    
-                    const button = document.createElement("button");
-                    button.className = "accordion-button collapsed";
-                    button.type = "button";
-                    button.setAttribute("data-bs-toggle", "collapse");
-                    button.setAttribute("data-bs-target", `#collapse${index}`);
-                    button.setAttribute("aria-expanded", "false");
-                    button.setAttribute("aria-controls", `collapse${index}`);
-                    
-                    // Display the path with proper formatting
-                    const displayPath = result.path.split("/").map(part => 
-                        part === result.path.split("/").pop() ? stripMdExtension(part) : part
-                    ).join("/");
-                    
-                    button.textContent = displayPath;
-                    
-                    const collapse = document.createElement("div");
-                    collapse.id = `collapse${index}`;
-                    collapse.className = "accordion-collapse collapse";
-                    collapse.setAttribute("aria-labelledby", `heading${index}`);
-                    
-                    const body = document.createElement("div");
-                    body.className = "accordion-body";
-                    
-                    result.matches.forEach(match => {
-                        const matchDiv = document.createElement("div");
-                        matchDiv.className = "search-match mb-2";
-                        
-                        const snippet = document.createElement("div");
-                        snippet.innerHTML = match.snippet;
-                        snippet.className = "snippet";
-                        
-                        const link = document.createElement("a");
-                        link.href = "#";
-                        link.textContent = "View in context";
-                        link.className = "btn btn-sm btn-primary mt-2";
-                        link.onclick = (e) => {
-                            e.preventDefault();
-                            loadFileWithHighlight(result.path, match.start, match.length);
-                        };
-                        
-                        matchDiv.appendChild(snippet);
-                        matchDiv.appendChild(link);
-                        body.appendChild(matchDiv);
-                    });
-                    
-                    collapse.appendChild(body);
-                    header.appendChild(button);
-                    card.appendChild(header);
-                    card.appendChild(collapse);
-                    accordion.appendChild(card);
-                });
-            } catch (error) {
-                console.error("Search error:", error);
-                document.getElementById("searchAccordion").innerHTML = 
-                    "<div class='alert alert-danger'>Error performing search.</div>";
+            if(results.length === 0) {
+                accordion.innerHTML = "<em>No matches found.</em>";
+                return;
             }
+
+            // Build a Bootstrap accordion item for each file
+            results.forEach((fileResult, index) => {
+                const fileId = "accordionFile-" + index;
+                const headingId = "heading-" + index;
+                const collapseId = "collapse-" + index;
+
+                // Display path minus .md
+                const displayedPath = displayPath(fileResult.path);
+
+                // Build the heading
+                const header = `
+                  <h2 class="accordion-header" id="${headingId}">
+                    <button class="accordion-button collapsed" type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#${collapseId}"
+                            aria-expanded="false"
+                            aria-controls="${collapseId}">
+                      ${displayedPath}
+                    </button>
+                  </h2>`;
+
+                // Build the body: snippet links
+                let bodyContent = "";
+                fileResult.matches.forEach(match => {
+                    bodyContent += `
+                      <div class="mb-2">
+                        <a href="#"
+                           onclick="loadFileWithHighlight('${fileResult.path}', ${match.start}, ${match.length})">
+                            ... ${match.snippet} ...
+                        </a>
+                      </div>`;
+                });
+
+                const body = `
+                  <div id="${collapseId}" class="accordion-collapse collapse"
+                       aria-labelledby="${headingId}" data-bs-parent="#searchAccordion">
+                    <div class="accordion-body">
+                      ${bodyContent}
+                    </div>
+                  </div>`;
+
+                const item = `
+                  <div class="accordion-item" id="${fileId}">
+                    ${header}
+                    ${body}
+                  </div>`;
+
+                accordion.innerHTML += item;
+            });
         }
         
         // ---------------------------
@@ -1360,9 +1205,172 @@ html_template = """
             }
         }
         
+        function newFile() {
+            // Create a modal for the new file
+            const modalHtml = `
+                <div class="modal fade" id="newFileModal" tabindex="-1" aria-labelledby="newFileModalLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="newFileModalLabel">Create New File</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label for="newFilePath" class="form-label">File Path</label>
+                                    <input type="text" class="form-control" id="newFilePath" placeholder="path/to/file.md">
+                                    <div class="form-text">Enter the path for the new file. Must end with .md</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="newFileContent" class="form-label">Initial Content</label>
+                                    <textarea class="form-control" id="newFileContent" rows="5" placeholder="# New File"></textarea>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-primary" onclick="createNewFile()">Create</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Remove any existing modal
+            const existingModal = document.getElementById('newFileModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // Add the modal to the document
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Show the modal
+            const newFileModal = new bootstrap.Modal(document.getElementById('newFileModal'));
+            newFileModal.show();
+        }
+        
+        async function createNewFile() {
+            const filePath = document.getElementById('newFilePath').value.trim();
+            const content = document.getElementById('newFileContent').value;
+            
+            if (!filePath) {
+                showToast('Please enter a file path', 'danger');
+                return;
+            }
+            
+            // Ensure the path ends with .md
+            const finalPath = filePath.toLowerCase().endsWith('.md') ? filePath : filePath + '.md';
+            
+            try {
+                const resp = await fetch('/api/file/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        path: finalPath,
+                        content: content
+                    })
+                });
+                
+                const data = await resp.json();
+                if (data.error) {
+                    showToast(data.error, 'danger');
+                    return;
+                }
+                
+                // Close the modal
+                bootstrap.Modal.getInstance(document.getElementById('newFileModal')).hide();
+                
+                showToast('File created successfully', 'success');
+                fetchTree(); // Refresh the file tree
+                
+                // Load the new file
+                loadFile(finalPath);
+            } catch (error) {
+                showToast('Error creating file: ' + error.message, 'danger');
+            }
+        }
+        
+        function newFolder() {
+            // Create a modal for the new folder
+            const modalHtml = `
+                <div class="modal fade" id="newFolderModal" tabindex="-1" aria-labelledby="newFolderModalLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="newFolderModalLabel">Create New Folder</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label for="newFolderPath" class="form-label">Folder Path</label>
+                                    <input type="text" class="form-control" id="newFolderPath" placeholder="path/to/folder">
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-primary" onclick="createNewFolder()">Create</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Remove any existing modal
+            const existingModal = document.getElementById('newFolderModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // Add the modal to the document
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Show the modal
+            const newFolderModal = new bootstrap.Modal(document.getElementById('newFolderModal'));
+            newFolderModal.show();
+        }
+        
+        async function createNewFolder() {
+            const folderPath = document.getElementById('newFolderPath').value.trim();
+            
+            if (!folderPath) {
+                showToast('Please enter a folder path', 'danger');
+                return;
+            }
+            
+            try {
+                const resp = await fetch('/api/directory/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        path: folderPath
+                    })
+                });
+                
+                const data = await resp.json();
+                if (data.error) {
+                    showToast(data.error, 'danger');
+                    return;
+                }
+                
+                // Close the modal
+                bootstrap.Modal.getInstance(document.getElementById('newFolderModal')).hide();
+                
+                showToast('Folder created successfully', 'success');
+                fetchTree(); // Refresh the file tree
+            } catch (error) {
+                showToast('Error creating folder: ' + error.message, 'danger');
+            }
+        }
+        
         // ---------------------------
         //  Event listeners
         // ---------------------------
+        document.getElementById('newFileBtn').addEventListener('click', newFile);
+        document.getElementById('newFolderBtn').addEventListener('click', newFolder);
         document.getElementById('homeBtn').addEventListener('click', goHome);
         
         // Function to return to the home page
@@ -1505,426 +1513,6 @@ html_template = """
                 window.addEventListener('load', initializeMermaid);
             }
         });
-
-        // Add right-click context menu to the sidebar for 'New Folder' and 'New File'
-        document.addEventListener('DOMContentLoaded', () => {
-            const sidebar = document.getElementById('sidebar');
-            sidebar.addEventListener('contextmenu', function(e) {
-                // Only show if right-clicking on the sidebar background or empty area (not on a file or folder)
-                if (!e.target.classList.contains('file-item') && !e.target.classList.contains('directory-toggle')) {
-                    e.preventDefault();
-                    showSidebarContextMenu(e);
-                }
-            });
-        });
-
-        function showSidebarContextMenu(e) {
-            // Remove any existing context menu
-            const existingMenu = document.getElementById('sidebar-context-menu');
-            if (existingMenu) existingMenu.remove();
-
-            // Create menu
-            const menu = document.createElement('div');
-            menu.id = 'sidebar-context-menu';
-            menu.style.position = 'fixed';
-            menu.style.zIndex = 10000;
-            menu.style.left = e.clientX + 'px';
-            menu.style.top = e.clientY + 'px';
-            menu.style.background = '#fff';
-            menu.style.border = '1px solid #ccc';
-            menu.style.borderRadius = '4px';
-            menu.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
-            menu.style.padding = '0.5rem 0';
-            menu.style.minWidth = '120px';
-
-            // New Folder option
-            const newFolderOption = document.createElement('div');
-            newFolderOption.textContent = 'New Folder';
-            newFolderOption.style.padding = '0.5rem 1rem';
-            newFolderOption.style.cursor = 'pointer';
-            newFolderOption.onmouseover = () => newFolderOption.style.background = '#f0f0f0';
-            newFolderOption.onmouseout = () => newFolderOption.style.background = '';
-            newFolderOption.onclick = () => {
-                menu.remove();
-                const folderNameInput = prompt('Enter name for new folder:');
-                if (folderNameInput) {
-                    fetch('/api/directory/create', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ path: folderNameInput })
-                    })
-                    .then(resp => resp.json())
-                    .then(data => {
-                        if (data.success) {
-                            showToast('Folder created successfully', 'success');
-                            fetchTree();
-                        } else {
-                            showToast(data.error || 'Failed to create folder', 'danger');
-                        }
-                    })
-                    .catch(() => showToast('Failed to create folder', 'danger'));
-                }
-            };
-            menu.appendChild(newFolderOption);
-
-            // New File option
-            const newFileOption = document.createElement('div');
-            newFileOption.textContent = 'New File';
-            newFileOption.style.padding = '0.5rem 1rem';
-            newFileOption.style.cursor = 'pointer';
-            newFileOption.onmouseover = () => newFileOption.style.background = '#f0f0f0';
-            newFileOption.onmouseout = () => newFileOption.style.background = '';
-            newFileOption.onclick = () => {
-                menu.remove();
-                const fileNameInput = prompt('Enter name for new file:');
-                if (fileNameInput) {
-                    // Ensure the file name ends with .md
-                    const safeFileName = fileNameInput.toLowerCase().endsWith('.md') ? fileNameInput : fileNameInput + '.md';
-                    fetch('/api/file/create', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ path: safeFileName, content: '' })
-                    })
-                    .then(resp => resp.json())
-                    .then(data => {
-                        if (data.success) {
-                            showToast('File created successfully', 'success');
-                            fetchTree();
-                            loadFile(safeFileName);
-                        } else {
-                            showToast(data.error || 'Failed to create file', 'danger');
-                        }
-                    })
-                    .catch(() => showToast('Failed to create file', 'danger'));
-                }
-            };
-            menu.appendChild(newFileOption);
-
-            document.body.appendChild(menu);
-
-            // Remove menu on click elsewhere
-            document.addEventListener('click', function onClickAway() {
-                menu.remove();
-                document.removeEventListener('click', onClickAway);
-            });
-        }
-
-        function showFolderContextMenu(e, node) {
-            // Remove any existing context menu
-            const existingMenu = document.getElementById('folder-context-menu');
-            if (existingMenu) existingMenu.remove();
-
-            // Capture the correct path for this menu instance
-            const folderPath = node.path;
-            const folderName = node.name;
-
-            // Create menu
-            const menu = document.createElement('div');
-            menu.id = 'folder-context-menu';
-            menu.style.position = 'fixed';
-            menu.style.zIndex = 10000;
-            menu.style.left = e.clientX + 'px';
-            menu.style.top = e.clientY + 'px';
-            menu.style.background = '#fff';
-            menu.style.border = '1px solid #ccc';
-            menu.style.borderRadius = '4px';
-            menu.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
-            menu.style.padding = '0.5rem 0';
-            menu.style.minWidth = '140px';
-
-            // Rename option
-            const renameOption = document.createElement('div');
-            renameOption.textContent = 'Rename';
-            renameOption.style.padding = '0.5rem 1rem';
-            renameOption.style.cursor = 'pointer';
-            renameOption.onmouseover = () => renameOption.style.background = '#f0f0f0';
-            renameOption.onmouseout = () => renameOption.style.background = '';
-            renameOption.onclick = () => {
-                menu.remove();
-                const newName = prompt('Enter new folder name:', folderName);
-                if (newName && newName !== folderName) {
-                    fetch('/api/directory/rename', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ path: folderPath, new_name: newName })
-                    })
-                    .then(resp => resp.json())
-                    .then(data => {
-                        if (data.success) {
-                            showToast('Folder renamed successfully', 'success');
-                            fetchTree();
-                        } else {
-                            showToast(data.error || 'Failed to rename folder', 'danger');
-                        }
-                    })
-                    .catch(() => showToast('Failed to rename folder', 'danger'));
-                }
-            };
-            menu.appendChild(renameOption);
-
-            // Delete option
-            const deleteOption = document.createElement('div');
-            deleteOption.textContent = 'Delete';
-            deleteOption.style.padding = '0.5rem 1rem';
-            deleteOption.style.cursor = 'pointer';
-            deleteOption.onmouseover = () => deleteOption.style.background = '#f0f0f0';
-            deleteOption.onmouseout = () => deleteOption.style.background = '';
-            deleteOption.onclick = () => {
-                menu.remove();
-                if (confirm(`Are you sure you want to delete the folder '${folderName}' and all its contents?`)) {
-                    fetch('/api/directory/delete', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ path: folderPath })
-                    })
-                    .then(resp => resp.json())
-                    .then(data => {
-                        if (data.success) {
-                            showToast('Folder deleted successfully', 'success');
-                            fetchTree();
-                        } else {
-                            showToast(data.error || 'Failed to delete folder', 'danger');
-                        }
-                    })
-                    .catch(() => showToast('Failed to delete folder', 'danger'));
-                }
-            };
-            menu.appendChild(deleteOption);
-
-            // New Folder option (inside this folder)
-            const newFolderOption = document.createElement('div');
-            newFolderOption.textContent = 'New Folder';
-            newFolderOption.style.padding = '0.5rem 1rem';
-            newFolderOption.style.cursor = 'pointer';
-            newFolderOption.onmouseover = () => newFolderOption.style.background = '#f0f0f0';
-            newFolderOption.onmouseout = () => newFolderOption.style.background = '';
-            newFolderOption.onclick = () => {
-                menu.remove();
-                const folderNameInput = prompt('Enter name for new folder:');
-                if (folderNameInput) {
-                    // Prepend the current folder's path
-                    const fullPath = folderPath ? folderPath + '/' + folderNameInput : folderNameInput;
-                    fetch('/api/directory/create', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ path: fullPath })
-                    })
-                    .then(resp => resp.json())
-                    .then(data => {
-                        if (data.success) {
-                            showToast('Folder created successfully', 'success');
-                            fetchTree();
-                        } else {
-                            showToast(data.error || 'Failed to create folder', 'danger');
-                        }
-                    })
-                    .catch(() => showToast('Failed to create folder', 'danger'));
-                }
-            };
-            menu.appendChild(newFolderOption);
-
-            // New File option (inside this folder)
-            const newFileOption = document.createElement('div');
-            newFileOption.textContent = 'New File';
-            newFileOption.style.padding = '0.5rem 1rem';
-            newFileOption.style.cursor = 'pointer';
-            newFileOption.onmouseover = () => newFileOption.style.background = '#f0f0f0';
-            newFileOption.onmouseout = () => newFileOption.style.background = '';
-            newFileOption.onclick = () => {
-                menu.remove();
-                const fileNameInput = prompt('Enter name for new file:');
-                if (fileNameInput) {
-                    // Ensure the file name ends with .md
-                    const safeFileName = fileNameInput.toLowerCase().endsWith('.md') ? fileNameInput : fileNameInput + '.md';
-                    // Prepend the current folder's path
-                    const fullPath = folderPath ? folderPath + '/' + safeFileName : safeFileName;
-                    fetch('/api/file/create', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ path: fullPath, content: '' })
-                    })
-                    .then(resp => resp.json())
-                    .then(data => {
-                        if (data.success) {
-                            showToast('File created successfully', 'success');
-                            fetchTree();
-                            loadFile(fullPath);
-                        } else {
-                            showToast(data.error || 'Failed to create file', 'danger');
-                        }
-                    })
-                    .catch(() => showToast('Failed to create file', 'danger'));
-                }
-            };
-            menu.appendChild(newFileOption);
-
-            document.body.appendChild(menu);
-
-            // Remove menu on click elsewhere
-            document.addEventListener('click', function onClickAway() {
-                menu.remove();
-                document.removeEventListener('click', onClickAway);
-            });
-        }
-
-        // Attach a single contextmenu event to the fileTree for event delegation
-        document.addEventListener('DOMContentLoaded', () => {
-            const fileTree = document.getElementById('fileTree');
-            fileTree.addEventListener('contextmenu', function(e) {
-                // Walk up from e.target to find the closest <li> with data-path and data-type
-                let el = e.target;
-                while (el && el !== fileTree && (el.tagName !== 'LI' || !el.hasAttribute('data-path'))) {
-                    el = el.parentElement;
-                }
-                // Debug log
-                console.log('Right-click event:', {target: e.target, foundElement: el, dataType: el && el.getAttribute ? el.getAttribute('data-type') : null, dataPath: el && el.getAttribute ? el.getAttribute('data-path') : null});
-                if (el && el !== fileTree && el.hasAttribute('data-path')) {
-                    e.preventDefault();
-                    const itemPath = el.getAttribute('data-path');
-                    const itemType = el.getAttribute('data-type');
-                    if (itemType === 'directory') {
-                        fetch('/api/tree').then(resp => resp.json()).then(treeData => {
-                            const node = findNodeByPath(treeData, itemPath);
-                            if (node) {
-                                showFolderContextMenu(e, node);
-                            }
-                        });
-                    } else if (itemType === 'file') {
-                        fetch('/api/tree').then(resp => resp.json()).then(treeData => {
-                            const node = findNodeByPath(treeData, itemPath);
-                            if (node) {
-                                showFileContextMenu(e, node);
-                            }
-                        });
-                    }
-                }
-            });
-        });
-
-        // Helper to find a node by path in the tree
-        function findNodeByPath(nodes, path) {
-            for (const node of nodes) {
-                if (node.path === path) return node;
-                if (node.type === 'directory' && node.children) {
-                    const found = findNodeByPath(node.children, path);
-                    if (found) return found;
-                }
-            }
-            return null;
-        }
-
-        // Restore showFileContextMenu for file right-clicks
-        function showFileContextMenu(e, node) {
-            // Remove any existing context menu
-            const existingMenu = document.getElementById('file-context-menu');
-            if (existingMenu) existingMenu.remove();
-
-            // Create menu
-            const menu = document.createElement('div');
-            menu.id = 'file-context-menu';
-            menu.style.position = 'fixed';
-            menu.style.zIndex = 10000;
-            menu.style.left = e.clientX + 'px';
-            menu.style.top = e.clientY + 'px';
-            menu.style.background = '#fff';
-            menu.style.border = '1px solid #ccc';
-            menu.style.borderRadius = '4px';
-            menu.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
-            menu.style.padding = '0.5rem 0';
-            menu.style.minWidth = '120px';
-
-            // Rename option
-            const renameOption = document.createElement('div');
-            renameOption.textContent = 'Rename';
-            renameOption.style.padding = '0.5rem 1rem';
-            renameOption.style.cursor = 'pointer';
-            renameOption.onmouseover = () => renameOption.style.background = '#f0f0f0';
-            renameOption.onmouseout = () => renameOption.style.background = '';
-            renameOption.onclick = () => {
-                menu.remove();
-                const newName = prompt('Enter new file name:', node.name);
-                if (newName && newName !== node.name) {
-                    // Ensure the new name ends with .md
-                    const finalName = newName.toLowerCase().endsWith('.md') ? newName : newName + '.md';
-                    fetch('/api/file/rename', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ path: node.path, new_name: finalName })
-                    })
-                    .then(resp => resp.json())
-                    .then(data => {
-                        if (data.success) {
-                            showToast('File renamed successfully', 'success');
-                            fetchTree();
-                        } else {
-                            showToast(data.error || 'Failed to rename file', 'danger');
-                        }
-                    })
-                    .catch(() => showToast('Failed to rename file', 'danger'));
-                }
-            };
-            menu.appendChild(renameOption);
-
-            // Delete option
-            const deleteOption = document.createElement('div');
-            deleteOption.textContent = 'Delete';
-            deleteOption.style.padding = '0.5rem 1rem';
-            deleteOption.style.cursor = 'pointer';
-            deleteOption.onmouseover = () => deleteOption.style.background = '#f0f0f0';
-            deleteOption.onmouseout = () => deleteOption.style.background = '';
-            deleteOption.onclick = () => {
-                menu.remove();
-                if (confirm(`Are you sure you want to delete the file '${node.name}'?`)) {
-                    fetch('/api/file/delete', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ path: node.path })
-                    })
-                    .then(resp => resp.json())
-                    .then(data => {
-                        if (data.success) {
-                            showToast('File deleted successfully', 'success');
-                            fetchTree();
-                        } else {
-                            showToast(data.error || 'Failed to delete file', 'danger');
-                        }
-                    })
-                    .catch(() => showToast('Failed to delete file', 'danger'));
-                }
-            };
-            menu.appendChild(deleteOption);
-
-            document.body.appendChild(menu);
-
-            // Remove menu on click elsewhere
-            document.addEventListener('click', function onClickAway() {
-                menu.remove();
-                document.removeEventListener('click', onClickAway);
-            });
-        }
-
-        function hardReset() {
-            if (confirm('Are you sure you want to perform a hard reset? This will save any changes and restart the service.')) {
-                fetch('/api/hard_reset', {
-                    method: 'POST',
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        showToast('Service restarted successfully', 'success');
-                        // Reload the page after a short delay
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 2000);
-                    } else {
-                        showToast('Error: ' + data.message, 'error');
-                    }
-                })
-                .catch(error => {
-                    showToast('Error: ' + error, 'error');
-                });
-            }
-        }
     </script>
 </body>
 </html>
@@ -1956,7 +1544,7 @@ def build_file_tree(root):
                 tree.append({
                     "type": "directory",
                     "name": entry.name,
-                    "path": os.path.relpath(entry.path, CONTENT_ROOT).replace(os.sep, "/"),
+                    "path": os.path.relpath(entry.path, CONTENT_ROOT),
                     "children": subtree
                 })
             else:
@@ -1964,7 +1552,7 @@ def build_file_tree(root):
                     tree.append({
                         "type": "file",
                         "name": entry.name,
-                        "path": os.path.relpath(entry.path, CONTENT_ROOT).replace(os.sep, "/")
+                        "path": os.path.relpath(entry.path, CONTENT_ROOT)
                     })
     return tree
 
@@ -2023,10 +1611,8 @@ def search_in_files(query, cache):
                     "start": m,
                     "length": len(query)
                 })
-            # Ensure the path is properly formatted with forward slashes
-            normalized_path = path.replace(os.sep, '/')
             results.append({
-                "path": normalized_path,
+                "path": path,
                 "matches": match_list
             })
     return results
@@ -2197,7 +1783,6 @@ def api_file():
     """
     try:
         rel_path = request.args.get("path", "")
-        rel_path = rel_path.replace('/', os.sep)
         logger.debug(f"API file request for path: {rel_path}")
         
         if not rel_path:
@@ -2308,32 +1893,6 @@ def api_file():
             ],
         )
 
-        # Process relative links
-        def process_relative_links(match):
-            link_text = match.group(1)
-            link_url = match.group(2)
-            
-            # If it's a relative link (not starting with http://, https://, or #)
-            if not (link_url.startswith('http://') or link_url.startswith('https://') or link_url.startswith('#')):
-                # Get the directory of the current file
-                current_dir = os.path.dirname(rel_path)
-                # Construct the full path relative to the current file
-                full_link_path = os.path.normpath(os.path.join(current_dir, link_url))
-                # Convert back to URL format
-                link_url = full_link_path.replace(os.sep, '/')
-                # Add .md extension if not present and not a directory
-                if not os.path.isdir(os.path.join(CONTENT_ROOT, full_link_path)) and not link_url.endswith('.md'):
-                    link_url += '.md'
-            
-            return f'<a href="{link_url}" target="_blank">{link_text}</a>'
-
-        # Process markdown links
-        html_content = re.sub(
-            r'<a href="([^"]+)">([^<]+)</a>',
-            process_relative_links,
-            html_content
-        )
-
         # Restore code blocks
         for placeholder, (lang, code) in code_blocks.items():
             lang_attr = f' class="language-{lang}"' if lang else ''
@@ -2439,7 +1998,6 @@ def api_file_with_highlight():
     - Highlighting for the matched substring
     """
     rel_path = request.args.get("path", "")
-    rel_path = rel_path.replace('/', os.sep)
     try:
         start = int(request.args.get("start", 0))
         length = int(request.args.get("length", 0))
@@ -2607,7 +2165,6 @@ def api_file_raw():
     Return the raw content of a specific .md file.
     """
     rel_path = request.args.get("path", "")
-    rel_path = rel_path.replace('/', os.sep)
     if not rel_path:
         return jsonify({"error": "No file path specified."})
 
@@ -2630,10 +2187,16 @@ def api_file_create():
     Create a new .md file.
     """
     data = request.json
-    rel_path = data["path"].replace('/', os.sep) if data and "path" in data else ""
     if not data or "path" not in data or "content" not in data:
         return jsonify({"error": "Missing required fields: path, content"}), 400
 
+    rel_path = data["path"]
+    content = data["content"]
+    
+    # Ensure the path ends with .md
+    if not rel_path.lower().endswith(".md"):
+        rel_path += ".md"
+    
     full_path = os.path.join(CONTENT_ROOT, rel_path)
     if not is_safe_path(full_path):
         return jsonify({"error": "Invalid path."}), 400
@@ -2641,7 +2204,7 @@ def api_file_create():
     if os.path.exists(full_path):
         return jsonify({"error": f"File '{rel_path}' already exists."}), 409
     
-    if save_file_content(full_path, data["content"]):
+    if save_file_content(full_path, content):
         refresh_file_cache()
         return jsonify({"success": True, "path": rel_path})
     else:
@@ -2653,9 +2216,12 @@ def api_file_edit():
     Edit an existing .md file.
     """
     data = request.json
-    rel_path = data["path"].replace('/', os.sep) if data and "path" in data else ""
     if not data or "path" not in data or "content" not in data:
         return jsonify({"error": "Missing required fields: path, content"}), 400
+    
+    rel_path = data["path"]
+    content = data["content"]
+    lock_id = data.get("lock_id")
     
     full_path = os.path.join(CONTENT_ROOT, rel_path)
     if not is_safe_path(full_path):
@@ -2665,11 +2231,11 @@ def api_file_edit():
         return jsonify({"error": f"File '{rel_path}' not found."}), 404
     
     # Check if file is locked
-    if data.get("lock_id"):
-        if rel_path not in file_locks or file_locks[rel_path]["lock_id"] != data["lock_id"]:
+    if lock_id:
+        if rel_path not in file_locks or file_locks[rel_path]["lock_id"] != lock_id:
             return jsonify({"error": "File is locked by another user."}), 403
     
-    if save_file_content(full_path, data["content"]):
+    if save_file_content(full_path, content):
         refresh_file_cache()
         return jsonify({"success": True, "path": rel_path})
     else:
@@ -2681,10 +2247,10 @@ def api_file_delete():
     Delete a .md file.
     """
     data = request.json
-    rel_path = data["path"].replace('/', os.sep) if data and "path" in data else ""
     if not data or "path" not in data:
         return jsonify({"error": "Missing required field: path"}), 400
     
+    rel_path = data["path"]
     full_path = os.path.join(CONTENT_ROOT, rel_path)
     
     if not is_safe_path(full_path):
@@ -2706,10 +2272,10 @@ def api_file_lock():
     Acquire a lock on a file for editing.
     """
     data = request.json
-    rel_path = data["path"].replace('/', os.sep) if data and "path" in data else ""
     if not data or "path" not in data:
         return jsonify({"error": "Missing required field: path"}), 400
     
+    rel_path = data["path"]
     user_id = data.get("user_id", "anonymous")
     
     full_path = os.path.join(CONTENT_ROOT, rel_path)
@@ -2733,10 +2299,10 @@ def api_file_unlock():
     Release a lock on a file.
     """
     data = request.json
-    rel_path = data["path"].replace('/', os.sep) if data and "path" in data else ""
     if not data or "path" not in data or "lock_id" not in data:
         return jsonify({"error": "Missing required fields: path, lock_id"}), 400
     
+    rel_path = data["path"]
     lock_id = data["lock_id"]
     
     if release_file_lock(rel_path, lock_id):
@@ -2752,10 +2318,10 @@ def api_directory_create():
     Create a new directory.
     """
     data = request.json
-    rel_path = data["path"].replace('/', os.sep) if data and "path" in data else ""
     if not data or "path" not in data:
         return jsonify({"error": "Missing required field: path"}), 400
     
+    rel_path = data["path"]
     full_path = os.path.join(CONTENT_ROOT, rel_path)
     
     if not is_safe_path(full_path):
@@ -2777,10 +2343,10 @@ def api_directory_delete():
     Delete a directory.
     """
     data = request.json
-    rel_path = data["path"].replace('/', os.sep) if data and "path" in data else ""
     if not data or "path" not in data:
         return jsonify({"error": "Missing required field: path"}), 400
     
+    rel_path = data["path"]
     full_path = os.path.join(CONTENT_ROOT, rel_path)
     
     if not is_safe_path(full_path):
@@ -2795,94 +2361,6 @@ def api_directory_delete():
         return jsonify({"success": True, "path": rel_path})
     except Exception as e:
         return jsonify({"error": f"Failed to delete directory '{rel_path}': {str(e)}"}), 500
-
-@app.route("/api/directory/rename", methods=["POST"])
-def api_directory_rename():
-    data = request.json
-    rel_path = data["path"].replace('/', os.sep) if data and "path" in data else ""
-    if not data or "new_name" not in data:
-        return jsonify({"error": "Missing required fields: path, new_name"}), 400
-    
-    full_path = os.path.join(CONTENT_ROOT, rel_path)
-    new_name = data["new_name"]
-    
-    if not new_name:
-        return jsonify({"error": "Invalid new name"}), 400
-    
-    parent_dir = os.path.dirname(full_path)
-    new_full_path = os.path.join(parent_dir, new_name)
-    
-    try:
-        os.rename(full_path, new_full_path)
-        refresh_file_cache()
-        return jsonify({"success": True, "path": os.path.relpath(new_full_path, CONTENT_ROOT).replace(os.sep, "/")})
-    except Exception as e:
-        return jsonify({"error": f"Failed to rename directory '{rel_path}': {str(e)}"}), 500
-
-@app.route("/api/file/rename", methods=["POST"])
-def api_file_rename():
-    data = request.json
-    rel_path = data["path"].replace('/', os.sep) if data and "path" in data else ""
-    if not data or "new_name" not in data:
-        return jsonify({"error": "Missing required fields: path, new_name"}), 400
-    
-    full_path = os.path.join(CONTENT_ROOT, rel_path)
-    new_name = data["new_name"]
-    
-    if not new_name:
-        return jsonify({"error": "Invalid new name"}), 400
-    
-    parent_dir = os.path.dirname(full_path)
-    new_full_path = os.path.join(parent_dir, new_name)
-    
-    try:
-        os.rename(full_path, new_full_path)
-        refresh_file_cache()
-        return jsonify({"success": True, "path": os.path.relpath(new_full_path, CONTENT_ROOT).replace(os.sep, "/")})
-    except Exception as e:
-        return jsonify({"error": f"Failed to rename file '{rel_path}': {str(e)}"}), 500
-
-@app.route("/api/settings", methods=["GET"])
-def get_settings():
-    try:
-        with open("settings.json", "r") as f:
-            settings = json.load(f)
-        return jsonify(settings)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/api/settings", methods=["POST"])
-def update_settings():
-    try:
-        data = request.get_json()
-        with open("settings.json", "r") as f:
-            settings = json.load(f)
-        
-        # Update settings
-        if "page_title" in data:
-            settings["page_title"] = data["page_title"]
-        
-        # Save updated settings
-        with open("settings.json", "w") as f:
-            json.dump(settings, f, indent=4)
-        
-        return jsonify({"success": True})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/api/hard_reset", methods=["POST"])
-def hard_reset():
-    """
-    Endpoint to save any changes and restart the service.
-    """
-    try:
-        # Save any pending changes (if needed)
-        # Then restart the service
-        os.system("sudo systemctl restart observe.service")
-        return jsonify({"status": "success", "message": "Service restarted successfully"})
-    except Exception as e:
-        logger.error(f"Error in hard reset: {str(e)}")
-        return jsonify({"status": "error", "message": str(e)}), 500
 
 # -------------------------------------------------------------------
 # Main entry point
