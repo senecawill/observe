@@ -1,4 +1,4 @@
-#!/opt/observe/venv/bin/python3
+#!/Users/williamwhite/Documents/Source/observe/venv/bin/python3.13
 # -*- coding: utf-8 -*-
 import re
 import sys

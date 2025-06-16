@@ -168,20 +168,112 @@ html_template = """
             height: calc(100vh - 120px);
             margin-bottom: 20px;
         }
+        
+        /* Toolbar styles */
+        .editor-toolbar {
+            display: none !important;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 8px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        
+        .editor-toolbar-group {
+            display: inline-flex;
+            gap: 4px;
+            padding: 0 4px;
+            border-right: 1px solid #ddd;
+        }
+        
+        .editor-toolbar-group:last-child {
+            border-right: none;
+        }
+        
+        .editor-toolbar button {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 32px;
+            height: 32px;
+            color: #333;
+            transition: all 0.2s;
+        }
+        
+        .editor-toolbar button:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+        
+        .editor-toolbar button.active {
+            background: #e9ecef;
+            border-color: #0d6efd;
+            color: #0d6efd;
+        }
+        
+        .editor-toolbar button i {
+            font-size: 14px;
+        }
+        
+        .editor-toolbar button[disabled] {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .editor-toolbar button.btn-cancel {
+            background: #dc3545;
+            color: white;
+            border-color: #dc3545;
+        }
+        
+        .editor-toolbar button.btn-cancel:hover {
+            background: #c82333;
+            border-color: #bd2130;
+            color: white;
+        }
+        
+        .editor-toolbar button.btn-save {
+            background: #28a745;
+            color: white;
+            border-color: #28a745;
+        }
+        
+        .editor-toolbar button.btn-save:hover {
+            background: #218838;
+            border-color: #1e7e34;
+            color: white;
+        }
+        
+        .editor-toolbar .dropdown-menu {
+            min-width: 200px;
+        }
+        
+        .editor-toolbar .dropdown-item {
+            padding: 8px 16px;
+            cursor: pointer;
+        }
+        
+        .editor-toolbar .dropdown-item:hover {
+            background: #f8f9fa;
+        }
+        
+        .editor-toolbar .dropdown-divider {
+            margin: 4px 0;
+        }
+        
         .CodeMirror {
             height: 100%;
             font-family: 'Courier New', Courier, monospace;
             font-size: 14px;
             border: 1px solid #ddd;
             border-radius: 4px;
-        }
-        .editor-toolbar {
-            margin-bottom: 10px;
-            padding: 5px;
-            border-radius: 4px;
-        }
-        .editor-toolbar button {
-            margin-right: 5px;
         }
         .viewer-container {
             display: block;
@@ -392,8 +484,98 @@ html_template = """
             </div>
 
             <!-- Content area -->
-            <div class="col-12 col-md-9 p-4" id="content">
-                <p class="text-muted">Select a file from the sidebar...</p>
+            <div class="col-12 col-md-9 p-4">
+                <!-- Editor Toolbar (outside content that gets replaced) -->
+                <div class="editor-toolbar" id="editorToolbar">
+                    <!-- Primary Actions -->
+                    <div class="editor-toolbar-group">
+                        <button type="button" class="btn-cancel" title="Cancel" onclick="cancelEdit()">
+                            <i class="bi bi-x"></i>
+                        </button>
+                        <button type="button" class="btn-save" title="Save" onclick="saveFile()">
+                            <i class="bi bi-save"></i>
+                        </button>
+                        <button type="button" title="Preview" onclick="togglePreview()">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                        <button type="button" title="Full Screen" onclick="toggleFullScreen()">
+                            <i class="bi bi-arrows-fullscreen"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Text Formatting -->
+                    <div class="editor-toolbar-group">
+                        <button type="button" title="Bold" onclick="formatText('bold')">
+                            <i class="bi bi-type-bold"></i>
+                        </button>
+                        <button type="button" title="Italic" onclick="formatText('italic')">
+                            <i class="bi bi-type-italic"></i>
+                        </button>
+                        <button type="button" title="Strikethrough" onclick="formatText('strikethrough')">
+                            <i class="bi bi-type-strikethrough"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Headers -->
+                    <div class="editor-toolbar-group">
+                        <button type="button" title="Heading 1" onclick="formatText('h1')">
+                            <i class="bi bi-type-h1"></i>
+                        </button>
+                        <button type="button" title="Heading 2" onclick="formatText('h2')">
+                            <i class="bi bi-type-h2"></i>
+                        </button>
+                        <button type="button" title="Heading 3" onclick="formatText('h3')">
+                            <i class="bi bi-type-h3"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Lists -->
+                    <div class="editor-toolbar-group">
+                        <button type="button" title="Bullet List" onclick="formatText('bullet-list')">
+                            <i class="bi bi-list-ul"></i>
+                        </button>
+                        <button type="button" title="Numbered List" onclick="formatText('numbered-list')">
+                            <i class="bi bi-list-ol"></i>
+                        </button>
+                        <button type="button" title="Task List" onclick="formatText('task-list')">
+                            <i class="bi bi-check2-square"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Links & Media -->
+                    <div class="editor-toolbar-group">
+                        <button type="button" title="Insert Link" onclick="insertLink()">
+                            <i class="bi bi-link-45deg"></i>
+                        </button>
+                        <button type="button" title="Insert Image" onclick="insertImage()">
+                            <i class="bi bi-image"></i>
+                        </button>
+                        <button type="button" title="Insert Table" onclick="insertTable()">
+                            <i class="bi bi-table"></i>
+                        </button>
+                        <button type="button" title="Insert Horizontal Rule" onclick="formatText('hr')">
+                            <i class="bi bi-hr"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Code & Advanced -->
+                    <div class="editor-toolbar-group">
+                        <button type="button" title="Code Block" onclick="insertCodeBlock()">
+                            <i class="bi bi-code-square"></i>
+                        </button>
+                        <button type="button" title="Inline Code" onclick="formatText('code')">
+                            <i class="bi bi-code-slash"></i>
+                        </button>
+                        <button type="button" title="Mermaid Diagram" onclick="insertMermaid()">
+                            <i class="bi bi-diagram-3"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Content that gets replaced -->
+                <div id="content">
+                    <p class="text-muted">Select a file from the sidebar...</p>
+                </div>
             </div>
         </div>
     </div>
@@ -674,11 +856,20 @@ html_template = """
         //  Fetch and build the tree
         // ---------------------------
         async function fetchTree() {
-            const resp = await fetch("/api/tree");
-            const treeData = await resp.json();
-            const fileTreeContainer = document.getElementById("fileTree");
-            fileTreeContainer.innerHTML = "";
-            buildTreeUI(treeData, fileTreeContainer);
+            console.log("fetchTree() called");
+            try {
+                const resp = await fetch("/api/tree");
+                console.log("fetchTree response status:", resp.status);
+                const treeData = await resp.json();
+                console.log("fetchTree data received:", treeData);
+                const fileTreeContainer = document.getElementById("fileTree");
+                console.log("fileTree container found:", fileTreeContainer);
+                fileTreeContainer.innerHTML = "";
+                buildTreeUI(treeData, fileTreeContainer);
+                console.log("buildTreeUI completed");
+            } catch (error) {
+                console.error("Error in fetchTree:", error);
+            }
         }
 
         function buildTreeUI(nodes, container) {
@@ -833,7 +1024,9 @@ html_template = """
                 }
             } catch (error) {
                 console.error("Error in loadFile:", error);
-                document.getElementById("content").innerHTML = `
+                const contentDiv = document.getElementById("content");
+                
+                contentDiv.innerHTML = `
                     <div class="alert alert-danger">
                         <h4 class="alert-heading">Error loading file</h4>
                         <p>${error.message || 'Unknown error occurred'}</p>
@@ -1030,6 +1223,13 @@ html_template = """
             // Hide the viewer and show the editor
             document.querySelector('.viewer-container').style.display = 'none';
             
+            // Show the main editor toolbar
+            const toolbar = document.getElementById('editorToolbar');
+            if (toolbar) {
+                toolbar.style.display = 'flex';
+                toolbar.style.setProperty('display', 'flex', 'important');
+            }
+            
             // Create editor container if it doesn't exist
             let editorContainer = document.querySelector('.editor-container');
             if (!editorContainer) {
@@ -1040,26 +1240,7 @@ html_template = """
             
             editorContainer.style.display = 'block';
             
-            // Create editor toolbar if it doesn't exist
-            let toolbar = editorContainer.querySelector('.editor-toolbar');
-            if (!toolbar) {
-                toolbar = document.createElement('div');
-                toolbar.className = 'editor-toolbar';
-                toolbar.innerHTML = `
-                    <div class="file-actions">
-                        <button class="btn btn-outline-primary" onclick="saveFile()">
-                            <i class="bi bi-save"></i> Save
-                        </button>
-                        <button class="btn btn-outline-secondary" onclick="cancelEdit()">
-                            <i class="bi bi-x"></i> Cancel
-                        </button>
-                        <button class="btn btn-outline-info" onclick="previewFile()">
-                            <i class="bi bi-eye"></i> Preview
-                        </button>
-                    </div>
-                `;
-                editorContainer.appendChild(toolbar);
-            }
+            // No need for separate action toolbar since Save/Cancel are in main toolbar
             
             // Clean up existing editor if it exists
             if (editor) {
@@ -1192,6 +1373,12 @@ html_template = """
                     document.querySelector('.editor-container').style.display = 'none';
                     document.querySelector('.viewer-container').style.display = 'block';
                     
+                    // Hide the main editor toolbar
+                    const toolbar = document.getElementById('editorToolbar');
+                    if (toolbar) {
+                        toolbar.style.setProperty('display', 'none', 'important');
+                    }
+                    
                     // Reload the file to show the latest version
                     await loadFile(filePathToLoad);
                 }
@@ -1232,6 +1419,12 @@ html_template = """
                     document.querySelector('.editor-container').style.display = 'none';
                     document.querySelector('.viewer-container').style.display = 'block';
                     
+                    // Hide the main editor toolbar
+                    const toolbar = document.getElementById('editorToolbar');
+                    if (toolbar) {
+                        toolbar.style.setProperty('display', 'none', 'important');
+                    }
+                    
                     // Reload the file to show the latest version
                     await loadFile(filePathToLoad);
                 } catch (error) {
@@ -1241,6 +1434,12 @@ html_template = """
                 // Just hide the editor and show the viewer
                 document.querySelector('.editor-container').style.display = 'none';
                 document.querySelector('.viewer-container').style.display = 'block';
+                
+                // Hide the main editor toolbar
+                const toolbar = document.getElementById('editorToolbar');
+                if (toolbar) {
+                    toolbar.style.setProperty('display', 'none', 'important');
+                }
             }
         }
         
@@ -1453,16 +1652,21 @@ html_template = """
         
         // Initial load
         async function init() {
+            console.log("init() function called");
             await fetchTree();
+            console.log("fetchTree completed in init");
             
             // Check if URL contains a file path
             if (!checkUrlForFilePath()) {
                 // If not, just display the default content
+                console.log("No file path in URL, showing default content");
                 document.getElementById('content').innerHTML = '<p class="text-muted">Select a file from the sidebar...</p>';
             }
         }
         
+        console.log("About to call init()");
         init();
+        console.log("init() call completed");
         
         // Initialize mermaid
         function initializeMermaid() {
@@ -1925,6 +2129,263 @@ html_template = """
                 });
             }
         }
+
+        // ---------------------------
+        //  Editor Toolbar Functions
+        // ---------------------------
+        
+        // Show/hide toolbar when editor is shown/hidden
+        function toggleToolbar(show) {
+            const toolbar = document.getElementById('editorToolbar');
+            toolbar.style.display = show ? 'flex' : 'none';
+        }
+        
+        // Format text based on the selected format type
+        function formatText(type) {
+            if (!editor) return;
+            
+            const selection = editor.getSelection();
+            const cursor = editor.getCursor();
+            const line = editor.getLine(cursor.line);
+            
+            let prefix = '';
+            let suffix = '';
+            let newText = selection || 'text';
+            
+            switch(type) {
+                case 'bold':
+                    prefix = '**';
+                    suffix = '**';
+                    break;
+                case 'italic':
+                    prefix = '*';
+                    suffix = '*';
+                    break;
+                case 'strikethrough':
+                    prefix = '~~';
+                    suffix = '~~';
+                    break;
+                case 'code':
+                    prefix = '`';
+                    suffix = '`';
+                    break;
+                case 'h1':
+                    prefix = '# ';
+                    break;
+                case 'h2':
+                    prefix = '## ';
+                    break;
+                case 'h3':
+                    prefix = '### ';
+                    break;
+                case 'bullet-list':
+                    prefix = '- ';
+                    break;
+                case 'numbered-list':
+                    prefix = '1. ';
+                    break;
+                case 'task-list':
+                    prefix = '- [ ] ';
+                    break;
+                case 'hr':
+                    newText = '\\n---\\n';
+                    break;
+            }
+            
+            if (selection) {
+                editor.replaceSelection(prefix + selection + suffix);
+            } else {
+                editor.replaceRange(prefix + newText + suffix, cursor);
+                // Move cursor to end of inserted text
+                const newCursor = {
+                    line: cursor.line,
+                    ch: cursor.ch + prefix.length + newText.length + suffix.length
+                };
+                editor.setCursor(newCursor);
+            }
+            
+            editor.focus();
+        }
+        
+        // Insert a link
+        function insertLink() {
+            if (!editor) return;
+            
+            const url = prompt('Enter URL:');
+            if (!url) return;
+            
+            const text = prompt('Enter link text:', url);
+            if (text === null) return;
+            
+            const selection = editor.getSelection();
+            const linkText = selection || text;
+            const linkMarkdown = `[${linkText}](${url})`;
+            
+            if (selection) {
+                editor.replaceSelection(linkMarkdown);
+            } else {
+                const cursor = editor.getCursor();
+                editor.replaceRange(linkMarkdown, cursor);
+            }
+            
+            editor.focus();
+        }
+        
+        // Insert an image
+        function insertImage() {
+            if (!editor) return;
+            
+            const url = prompt('Enter image URL:');
+            if (!url) return;
+            
+            const alt = prompt('Enter alt text:');
+            if (alt === null) return;
+            
+            const imageMarkdown = `![${alt}](${url})`;
+            const cursor = editor.getCursor();
+            editor.replaceRange(imageMarkdown, cursor);
+            editor.focus();
+        }
+        
+        // Insert a table
+        function insertTable() {
+            if (!editor) return;
+            
+            const rows = parseInt(prompt('Number of rows:', '3')) || 3;
+            const cols = parseInt(prompt('Number of columns:', '3')) || 3;
+            
+            
+            let table = '\\n';
+            
+            // Header row
+            table += '| ' + Array(cols).fill('Header').join(' | ') + ' |\\n';
+            
+            // Separator row
+            table += '| ' + Array(cols).fill('---').join(' | ') + ' |\\n';
+            
+            // Data rows
+            for (let i = 0; i < rows - 1; i++) {
+                table += '| ' + Array(cols).fill('Cell').join(' | ') + ' |\\n';
+            }
+            
+            const cursor = editor.getCursor();
+            editor.replaceRange(table, cursor);
+            editor.focus();
+        }
+        
+        // Insert a code block
+        function insertCodeBlock() {
+            if (!editor) return;
+            
+            const language = prompt('Enter language (optional):');
+            const codeBlock = '```' + (language || '') + '\\n\\n```';
+            
+            const cursor = editor.getCursor();
+            editor.replaceRange(codeBlock, cursor);
+            
+            // Move cursor inside the code block
+            const newCursor = {
+                line: cursor.line + 1,
+                ch: 0
+            };
+            editor.setCursor(newCursor);
+            editor.focus();
+        }
+        
+        // Insert a Mermaid diagram
+        function insertMermaid() {
+            if (!editor) return;
+            
+            const diagramType = prompt('Enter diagram type (flowchart, sequence, etc.):', 'flowchart');
+            if (!diagramType) return;
+            
+            const diagram = '```mermaid\\n' + diagramType + ' TD\\n    A[Start] --> B[End]\\n```';
+            
+            const cursor = editor.getCursor();
+            editor.replaceRange(diagram, cursor);
+            editor.focus();
+        }
+        
+        // Toggle preview mode
+        function togglePreview() {
+            const editorContainer = document.querySelector('.editor-container');
+            const viewerContainer = document.querySelector('.viewer-container');
+            const previewButton = document.querySelector('button[onclick="togglePreview()"]');
+            
+            if (editorContainer.style.display === 'none') {
+                // Switch to editor
+                editorContainer.style.display = 'block';
+                viewerContainer.style.display = 'none';
+                previewButton.innerHTML = '<i class="bi bi-eye"></i>';
+                editor.refresh();
+            } else {
+                // Switch to preview
+                editorContainer.style.display = 'none';
+                viewerContainer.style.display = 'block';
+                previewButton.innerHTML = '<i class="bi bi-pencil"></i>';
+                updatePreview();
+            }
+        }
+        
+        // Toggle full screen mode
+        function toggleFullScreen() {
+            const content = document.getElementById('content');
+            const sidebar = document.getElementById('sidebar');
+            const fullScreenButton = document.querySelector('button[onclick="toggleFullScreen()"]');
+            
+            if (content.classList.contains('col-md-12')) {
+                // Exit full screen
+                content.classList.remove('col-md-12');
+                content.classList.add('col-md-9');
+                sidebar.style.display = 'block';
+                fullScreenButton.innerHTML = '<i class="bi bi-arrows-fullscreen"></i>';
+            } else {
+                // Enter full screen
+                content.classList.remove('col-md-9');
+                content.classList.add('col-md-12');
+                sidebar.style.display = 'none';
+                fullScreenButton.innerHTML = '<i class="bi bi-fullscreen-exit"></i>';
+            }
+            
+            // Refresh editor to adjust to new size
+            if (editor) {
+                editor.refresh();
+            }
+        }
+        
+        // Modify the existing loadFile function to show/hide toolbar
+        const originalLoadFile = loadFile;
+        loadFile = function(path) {
+            originalLoadFile(path);
+            toggleToolbar(true);
+        };
+        
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Only handle shortcuts when editor is focused
+            if (!editor || document.activeElement !== editor.getInputField()) return;
+            
+            // Ctrl/Cmd + B for bold
+            if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+                e.preventDefault();
+                formatText('bold');
+            }
+            // Ctrl/Cmd + I for italic
+            else if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
+                e.preventDefault();
+                formatText('italic');
+            }
+            // Ctrl/Cmd + K for link
+            else if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                insertLink();
+            }
+            // Ctrl/Cmd + S for save
+            else if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                saveFile();
+            }
+        });
     </script>
 </body>
 </html>
@@ -2052,7 +2513,10 @@ def is_safe_path(path):
     """
     Check if the path is safe (within CONTENT_ROOT).
     """
-    return os.path.commonprefix([CONTENT_ROOT, os.path.realpath(path)]) == CONTENT_ROOT
+    # Resolve both paths to absolute paths for proper comparison
+    content_root_abs = os.path.realpath(CONTENT_ROOT)
+    path_abs = os.path.realpath(path)
+    return os.path.commonprefix([content_root_abs, path_abs]) == content_root_abs
 
 def get_file_content(file_path):
     """
@@ -2206,7 +2670,7 @@ def api_file():
         full_path = os.path.join(CONTENT_ROOT, rel_path)
         logger.debug(f"Full path: {full_path}")
         
-        if not os.path.commonprefix([CONTENT_ROOT, os.path.realpath(full_path)]) == CONTENT_ROOT:
+        if not is_safe_path(full_path):
             logger.error(f"Invalid path attempted: {full_path}")
             return jsonify({"error": "Invalid path."})
 

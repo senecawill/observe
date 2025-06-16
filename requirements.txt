@@ -5,11 +5,3 @@ gunicorn==21.2.0
 python-markdown-math==0.8
 markdown-callouts==0.1.0
 markdown-checklist==0.1.0
-markdown-wikilinks==0.1.0
-markdown-mentions==0.1.0
-markdown-tags==0.1.0
-markdown-admonitions==0.1.0
-markdown-tables==0.1.0
-markdown-tasklists==0.1.0
-markdown-katex==0.1.0
-markdown-mermaid==0.1.0
