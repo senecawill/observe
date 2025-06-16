@@ -994,33 +994,10 @@ html_template = """
                         highlightEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }
                     
-                    // Initialize Mermaid diagrams after content is loaded
-                    mermaid.initialize({
-                        startOnLoad: false,
-                        theme: 'default',
-                        securityLevel: 'loose',
-                        fontFamily: 'monospace',
-                        flowchart: {
-                            useMaxWidth: true,
-                            htmlLabels: true
-                        }
-                    });
-                    
-                    // Use timeout to ensure DOM is fully ready
+                    // Re-initialize Mermaid for new content
                     setTimeout(() => {
-                        try {
-                            // Find all mermaid elements
-                            const mermaidElements = document.querySelectorAll('.mermaid');
-                            console.log(`Found ${mermaidElements.length} mermaid diagrams to render`);
-                            
-                            // Run mermaid render
-                            mermaid.run({
-                                nodes: mermaidElements
-                            });
-                        } catch (e) {
-                            console.error('Mermaid initialization failed:', e);
-                        }
-                    }, 300); // Increased timeout for better reliability
+                        renderMermaidDiagrams();
+                    }, 200);
                 }
             } catch (error) {
                 console.error("Error in loadFile:", error);
@@ -1495,33 +1472,10 @@ html_template = """
                 throwOnError: false
             });
             
-            // Initialize Mermaid diagrams
-            mermaid.initialize({
-                startOnLoad: true,
-                theme: 'default',
-                securityLevel: 'loose',
-                fontFamily: 'monospace',
-                flowchart: {
-                    useMaxWidth: true,
-                    htmlLabels: true
-                }
-            });
-            
-            // Use timeout to ensure DOM is fully ready
+            // Render Mermaid diagrams in preview
             setTimeout(() => {
-                try {
-                    // Find all mermaid elements in the preview
-                    const mermaidElements = document.querySelectorAll('#previewModal .mermaid');
-                    console.log(`Found ${mermaidElements.length} mermaid diagrams in preview`);
-                    
-                    // Run mermaid render
-                    mermaid.run({
-                        nodes: mermaidElements
-                    });
-                } catch (e) {
-                    console.error('Mermaid preview initialization failed:', e);
-                }
-            }, 300);
+                renderMermaidDiagrams('#previewModal');
+            }, 100);
         }
         
         // ---------------------------
@@ -1668,47 +1622,78 @@ html_template = """
         init();
         console.log("init() call completed");
         
-        // Initialize mermaid
-        function initializeMermaid() {
-            mermaid.initialize({
-                startOnLoad: false,
-                theme: 'default',
-                securityLevel: 'loose',
-                fontFamily: 'monospace',
-                flowchart: {
-                    useMaxWidth: true,
-                    htmlLabels: true
-                }
-            });
-            
-            // Use timeout to ensure DOM is fully ready
-            setTimeout(() => {
-                try {
-                    // Find all mermaid elements on the page
-                    const mermaidElements = document.querySelectorAll('.mermaid');
-                    console.log(`Found ${mermaidElements.length} mermaid diagrams on page load`);
+        // Unified Mermaid rendering function - simplified
+        function renderMermaidDiagrams(containerSelector = '') {
+            try {
+                console.log('Attempting to render Mermaid diagrams...');
+                const selector = containerSelector ? `${containerSelector} .mermaid` : '.mermaid';
+                const mermaidElements = document.querySelectorAll(selector);
+                console.log(`Found ${mermaidElements.length} mermaid diagrams to render in ${containerSelector || 'document'}`);
+                
+                // Log the elements found for debugging
+                mermaidElements.forEach((el, index) => {
+                    console.log(`Mermaid element ${index}:`, el, 'Content:', el.textContent.substring(0, 100));
+                });
+                
+                if (mermaidElements.length > 0) {
+                    // Force re-render by removing any existing processed attributes
+                    mermaidElements.forEach(element => {
+                        element.removeAttribute('data-processed');
+                        // Also remove any svg content that might be there
+                        if (element.querySelector('svg')) {
+                            element.innerHTML = element.textContent;
+                        }
+                    });
                     
-                    if (mermaidElements.length > 0) {
-                        // Run mermaid render
-                        mermaid.run({
-                            nodes: mermaidElements
-                        });
-                    }
-                } catch (e) {
-                    console.error('Mermaid initialization failed:', e);
+                    // Use the simplest approach that works with Mermaid 10.6.1
+                    mermaid.run().then(() => {
+                        console.log('Mermaid diagrams rendered successfully');
+                    }).catch(error => {
+                        console.error('Mermaid rendering error:', error);
+                    });
+                } else {
+                    console.log('No mermaid elements found. Checking for elements in paragraphs...');
+                    const pMermaidElements = document.querySelectorAll('p .mermaid');
+                    console.log(`Found ${pMermaidElements.length} mermaid diagrams in paragraphs`);
                 }
-            }, 300); // Increased timeout for better reliability
+            } catch (e) {
+                console.error('Mermaid rendering failed:', e);
+            }
         }
         
-        document.addEventListener('DOMContentLoaded', () => {
-            // Wait for mermaid to be fully loaded
-            if (typeof mermaid !== 'undefined') {
-                initializeMermaid();
-            } else {
-                console.warn('Mermaid not loaded yet. Will retry on page load.');
-                window.addEventListener('load', initializeMermaid);
+        // Initialize mermaid once on page load - simplified approach
+        function initializeMermaid() {
+            try {
+                console.log('Initializing Mermaid...');
+                mermaid.initialize({
+                    startOnLoad: true,
+                    theme: 'default',
+                    securityLevel: 'loose',
+                    fontFamily: 'Arial, sans-serif',
+                    flowchart: {
+                        useMaxWidth: true,
+                        htmlLabels: true
+                    }
+                });
+                console.log('Mermaid initialized successfully');
+            } catch (e) {
+                console.error('Mermaid initialization failed:', e);
             }
-        });
+        }
+        
+        // Initialize mermaid when page loads
+        if (typeof mermaid !== 'undefined') {
+            initializeMermaid();
+        } else {
+            // Wait for mermaid to load
+            window.addEventListener('load', () => {
+                if (typeof mermaid !== 'undefined') {
+                    initializeMermaid();
+                } else {
+                    console.error('Mermaid library failed to load');
+                }
+            });
+        }
 
         // Add right-click context menu to the sidebar for 'New Folder' and 'New File'
         document.addEventListener('DOMContentLoaded', () => {
@@ -2704,8 +2689,19 @@ def api_file():
         # Normalize newlines to Unix-style
         content = content.replace("\r\n", "\n").replace("\r", "\n")
 
-        # Pre-process code blocks before any other markdown processing
-        # Extract and store code blocks that would otherwise be affected by other processing
+        # Special handling for mermaid diagrams - FIRST, before any other code block processing
+        mermaid_blocks = {}
+        mermaid_pattern = r'```mermaid\s*\n(.*?)\n\s*```'
+        
+        def save_mermaid_block(match):
+            mermaid_content = match.group(1)
+            placeholder = f'MERMAID_PLACEHOLDER_{len(mermaid_blocks)}'
+            mermaid_blocks[placeholder] = mermaid_content
+            return placeholder
+        
+        content = re.sub(mermaid_pattern, save_mermaid_block, content, flags=re.DOTALL)
+
+        # Pre-process other code blocks after mermaid blocks are extracted
         code_blocks = {}
         code_block_pattern = r'```(\w*)\s*\n(.*?)\n\s*```'
         
@@ -2717,18 +2713,6 @@ def api_file():
             return placeholder
         
         content = re.sub(code_block_pattern, save_code_block, content, flags=re.DOTALL)
-
-        # Special handling for mermaid diagrams - we need to process these before markdown conversion
-        mermaid_blocks = {}
-        mermaid_pattern = r'```mermaid\s*\n(.*?)\n\s*```'
-        
-        def save_mermaid_block(match):
-            mermaid_content = match.group(1)
-            placeholder = f'MERMAID_PLACEHOLDER_{len(mermaid_blocks)}'
-            mermaid_blocks[placeholder] = mermaid_content
-            return placeholder
-        
-        content = re.sub(mermaid_pattern, save_mermaid_block, content, flags=re.DOTALL)
 
         # Pre-process pipe tables - convert Markdown pipe tables to HTML tables
         pipe_table_pattern = r'^\|(.+)\|\s*$\n^\|[-:\|\s]+\|\s*$\n((?:^\|.+\|\s*$\n)+)'
@@ -2936,8 +2920,19 @@ def api_file_with_highlight():
             + content[end:]
         )
 
-    # Pre-process code blocks before any other markdown processing
-    # Extract and store code blocks that would otherwise be affected by other processing
+    # Special handling for mermaid diagrams - FIRST, before any other code block processing
+    mermaid_blocks = {}
+    mermaid_pattern = r'```mermaid\s*\n(.*?)\n\s*```'
+    
+    def save_mermaid_block(match):
+        mermaid_content = match.group(1)
+        placeholder = f'MERMAID_PLACEHOLDER_{len(mermaid_blocks)}'
+        mermaid_blocks[placeholder] = mermaid_content
+        return placeholder
+    
+    highlight_content = re.sub(mermaid_pattern, save_mermaid_block, highlight_content, flags=re.DOTALL)
+
+    # Pre-process other code blocks after mermaid blocks are extracted
     code_blocks = {}
     code_block_pattern = r'```(\w*)\s*\n(.*?)\n\s*```'
     
@@ -2949,18 +2944,6 @@ def api_file_with_highlight():
         return placeholder
     
     highlight_content = re.sub(code_block_pattern, save_code_block, highlight_content, flags=re.DOTALL)
-
-    # Special handling for mermaid diagrams - we need to process these before markdown conversion
-    mermaid_blocks = {}
-    mermaid_pattern = r'```mermaid\s*\n(.*?)\n\s*```'
-    
-    def save_mermaid_block(match):
-        mermaid_content = match.group(1)
-        placeholder = f'MERMAID_PLACEHOLDER_{len(mermaid_blocks)}'
-        mermaid_blocks[placeholder] = mermaid_content
-        return placeholder
-    
-    highlight_content = re.sub(mermaid_pattern, save_mermaid_block, highlight_content, flags=re.DOTALL)
 
     # Pre-process pipe tables - convert Markdown pipe tables to HTML tables
     pipe_table_pattern = r'^\|(.+)\|\s*$\n^\|[-:\|\s]+\|\s*$\n((?:^\|.+\|\s*$\n)+)'
