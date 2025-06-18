@@ -418,6 +418,9 @@ html_template = """
                 <button class="btn btn-danger me-2" id="hardResetBtn" onclick="hardReset()">
                     <i class="bi bi-arrow-clockwise"></i> Hard Reset
                 </button>
+                <button class="btn btn-outline-light me-2" id="upload-btn" title="Upload Files">
+                    <i class="bi bi-upload"></i> Upload
+                </button>
                 <button class="btn btn-outline-light" id="settings-btn" title="Settings">
                     <i class="fas fa-cog"></i>
                 </button>
@@ -437,6 +440,44 @@ html_template = """
                     <label for="page-title-input">Page Title:</label>
                     <input type="text" id="page-title-input" class="setting-input">
                     <button id="save-title-btn" class="btn btn-primary">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Modal -->
+    <div id="upload-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Upload Files</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="upload-target-dir" class="form-label">Target Directory (optional):</label>
+                    <input type="text" id="upload-target-dir" class="form-control" placeholder="e.g., docs/project">
+                    <small class="form-text text-muted">Leave empty to upload to root directory</small>
+                </div>
+                <div class="mb-3">
+                    <label for="file-upload" class="form-label">Select .md files:</label>
+                    <input type="file" id="file-upload" class="form-control" multiple accept=".md">
+                    <small class="form-text text-muted">You can select multiple files</small>
+                </div>
+                <div id="upload-preview" class="mb-3" style="display: none;">
+                    <h6>Selected files:</h6>
+                    <ul id="selected-files-list" class="list-group"></ul>
+                </div>
+                <div class="d-flex gap-2">
+                    <button id="upload-files-btn" class="btn btn-primary" disabled>
+                        <i class="bi bi-upload"></i> Upload Files
+                    </button>
+                    <button id="cancel-upload-btn" class="btn btn-secondary">Cancel</button>
+                </div>
+                <div id="upload-progress" class="mt-3" style="display: none;">
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <small class="text-muted">Uploading files...</small>
                 </div>
             </div>
         </div>
@@ -716,6 +757,9 @@ html_template = """
             if (event.target == settingsModal) {
                 settingsModal.style.display = "none";
             }
+            if (event.target == uploadModal) {
+                uploadModal.style.display = "none";
+            }
         }
 
         // Save page title
@@ -749,100 +793,125 @@ html_template = """
             }
         }
 
-        // For display in search results (path minus .md on last segment)
-        function displayPath(path) {
-            const parts = path.split("/");
-            const fileName = parts.pop();
-            const stripped = stripMdExtension(fileName);
-            parts.push(stripped);
-            return parts.join("/");
+        // Upload functionality
+        const uploadBtn = document.getElementById('upload-btn');
+        const uploadModal = document.getElementById('upload-modal');
+        const fileUpload = document.getElementById('file-upload');
+        const uploadTargetDir = document.getElementById('upload-target-dir');
+        const uploadFilesBtn = document.getElementById('upload-files-btn');
+        const cancelUploadBtn = document.getElementById('cancel-upload-btn');
+        const uploadPreview = document.getElementById('upload-preview');
+        const selectedFilesList = document.getElementById('selected-files-list');
+        const uploadProgress = document.getElementById('upload-progress');
+
+        // Open upload modal
+        uploadBtn.onclick = function() {
+            uploadModal.style.display = "block";
+            resetUploadForm();
         }
-        
-        // Update breadcrumb navigation with file path
-        function updateBreadcrumbs(filePath) {
-            const breadcrumb = document.getElementById('fileBreadcrumb');
-            breadcrumb.innerHTML = '';
+
+        // Close upload modal
+        uploadModal.querySelector('.close').onclick = function() {
+            uploadModal.style.display = "none";
+        }
+
+        // Cancel upload
+        cancelUploadBtn.onclick = function() {
+            uploadModal.style.display = "none";
+        }
+
+        // Handle file selection
+        fileUpload.onchange = function() {
+            const files = Array.from(this.files);
+            const validFiles = files.filter(file => file.name.toLowerCase().endsWith('.md'));
             
-            // If the filePath is empty or undefined, return early
-            if (!filePath) return;
+            if (validFiles.length === 0) {
+                showToast('Please select .md files only', 'error');
+                this.value = '';
+                return;
+            }
             
-            // Split the path into parts
-            // Split the path into parts
-            const parts = filePath.split('/');
-            const fileName = parts.pop();
+            // Show preview
+            uploadPreview.style.display = 'block';
+            selectedFilesList.innerHTML = '';
             
-            // Add Home crumb
-            const homeCrumb = document.createElement('li');
-            homeCrumb.className = 'breadcrumb-item';
-            const homeLink = document.createElement('a');
-            homeLink.href = '/';
-            homeLink.textContent = 'Home';
-            homeLink.addEventListener('click', (e) => {
-                e.preventDefault();
-                goHome();
+            validFiles.forEach(file => {
+                const li = document.createElement('li');
+                li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                li.innerHTML = `
+                    <span>${file.name}</span>
+                    <span class="badge bg-primary rounded-pill">${(file.size / 1024).toFixed(1)} KB</span>
+                `;
+                selectedFilesList.appendChild(li);
             });
-            homeCrumb.appendChild(homeLink);
-            breadcrumb.appendChild(homeCrumb);
             
-            // Add directory parts
-            let currentPath = '';
-            parts.forEach((part, index) => {
-                if (part) {  // Skip empty parts
-                    // Use proper URL encoding for directory parts
-                    currentPath += part + '/';
+            // Enable upload button
+            uploadFilesBtn.disabled = false;
+        }
+
+        // Handle file upload
+        uploadFilesBtn.onclick = function() {
+            const files = Array.from(fileUpload.files);
+            const targetDir = uploadTargetDir.value.trim();
+            
+            if (files.length === 0) {
+                showToast('Please select files to upload', 'error');
+                return;
+            }
+            
+            // Show progress
+            uploadProgress.style.display = 'block';
+            uploadFilesBtn.disabled = true;
+            
+            const formData = new FormData();
+            files.forEach(file => {
+                formData.append('files', file);
+            });
+            if (targetDir) {
+                formData.append('target_dir', targetDir);
+            }
+            
+            fetch('/api/file/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                uploadProgress.style.display = 'none';
+                uploadFilesBtn.disabled = false;
+                
+                if (data.success) {
+                    let message = `Successfully uploaded ${data.uploaded_files.length} file(s)`;
+                    if (data.errors.length > 0) {
+                        message += `. ${data.errors.length} file(s) failed to upload.`;
+                    }
+                    showToast(message, 'success');
                     
-                    const dirCrumb = document.createElement('li');
-                    dirCrumb.className = 'breadcrumb-item';
+                    // Refresh file tree
+                    fetchTree();
                     
-                    const dirLink = document.createElement('a');
-                    // Encode the current path for the URL
-                    dirLink.href = `/view/${encodeURIComponent(currentPath)}`;
-                    dirLink.textContent = part;
-                    dirLink.setAttribute('data-path', currentPath);
-                    dirLink.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        // We don't have a direct function to navigate to folders,
-                        // but we could implement one in the future
-                    });
-                    
-                    dirCrumb.appendChild(dirLink);
-                    breadcrumb.appendChild(dirCrumb);
+                    // Close modal
+                    uploadModal.style.display = 'none';
+                    resetUploadForm();
+                } else {
+                    showToast(data.error || 'Upload failed', 'error');
                 }
+            })
+            .catch(error => {
+                uploadProgress.style.display = 'none';
+                uploadFilesBtn.disabled = false;
+                console.error('Upload error:', error);
+                showToast('Upload failed: ' + error.message, 'error');
             });
-            
-            // Add the file name as the active item
-            const fileCrumb = document.createElement('li');
-            fileCrumb.className = 'breadcrumb-item active';
-            fileCrumb.textContent = stripMdExtension(fileName);
-            breadcrumb.appendChild(fileCrumb);
         }
-        
-        // Show a toast notification
-        function showToast(message, type = 'success') {
-            const toastContainer = document.querySelector('.toast-container');
-            const toastId = 'toast-' + Date.now();
-            
-            const toastHtml = `
-                <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-                    <div class="toast-header bg-${type} text-white">
-                        <strong class="me-auto">${type === 'success' ? 'Success' : 'Error'}</strong>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
-                    </div>
-                    <div class="toast-body">
-                        ${message}
-                    </div>
-                </div>
-            `;
-            
-            toastContainer.innerHTML += toastHtml;
-            const toastElement = document.getElementById(toastId);
-            const toast = new bootstrap.Toast(toastElement, { delay: 3000 });
-            toast.show();
-            
-            // Remove the toast after it's hidden
-            toastElement.addEventListener('hidden.bs.toast', function() {
-                toastElement.remove();
-            });
+
+        // Reset upload form
+        function resetUploadForm() {
+            fileUpload.value = '';
+            uploadTargetDir.value = '';
+            uploadPreview.style.display = 'none';
+            uploadProgress.style.display = 'none';
+            uploadFilesBtn.disabled = true;
         }
 
         // ---------------------------
@@ -2371,6 +2440,101 @@ html_template = """
                 saveFile();
             }
         });
+
+        // For display in search results (path minus .md on last segment)
+        function displayPath(path) {
+            const parts = path.split("/");
+            const fileName = parts.pop();
+            const stripped = stripMdExtension(fileName);
+            parts.push(stripped);
+            return parts.join("/");
+        }
+        
+        // Update breadcrumb navigation with file path
+        function updateBreadcrumbs(filePath) {
+            const breadcrumb = document.getElementById('fileBreadcrumb');
+            breadcrumb.innerHTML = '';
+            
+            // If the filePath is empty or undefined, return early
+            if (!filePath) return;
+            
+            // Split the path into parts
+            const parts = filePath.split('/');
+            const fileName = parts.pop();
+            
+            // Add Home crumb
+            const homeCrumb = document.createElement('li');
+            homeCrumb.className = 'breadcrumb-item';
+            const homeLink = document.createElement('a');
+            homeLink.href = '/';
+            homeLink.textContent = 'Home';
+            homeLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                goHome();
+            });
+            homeCrumb.appendChild(homeLink);
+            breadcrumb.appendChild(homeCrumb);
+            
+            // Add directory parts
+            let currentPath = '';
+            parts.forEach((part, index) => {
+                if (part) {  // Skip empty parts
+                    // Use proper URL encoding for directory parts
+                    currentPath += part + '/';
+                    
+                    const dirCrumb = document.createElement('li');
+                    dirCrumb.className = 'breadcrumb-item';
+                    
+                    const dirLink = document.createElement('a');
+                    // Encode the current path for the URL
+                    dirLink.href = `/view/${encodeURIComponent(currentPath)}`;
+                    dirLink.textContent = part;
+                    dirLink.setAttribute('data-path', currentPath);
+                    dirLink.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        // We don't have a direct function to navigate to folders,
+                        // but we could implement one in the future
+                    });
+                    
+                    dirCrumb.appendChild(dirLink);
+                    breadcrumb.appendChild(dirCrumb);
+                }
+            });
+            
+            // Add the file name as the active item
+            const fileCrumb = document.createElement('li');
+            fileCrumb.className = 'breadcrumb-item active';
+            fileCrumb.textContent = stripMdExtension(fileName);
+            breadcrumb.appendChild(fileCrumb);
+        }
+        
+        // Show a toast notification
+        function showToast(message, type = 'success') {
+            const toastContainer = document.querySelector('.toast-container');
+            const toastId = 'toast-' + Date.now();
+            
+            const toastHtml = `
+                <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="toast-header bg-${type} text-white">
+                        <strong class="me-auto">${type === 'success' ? 'Success' : 'Error'}</strong>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                    <div class="toast-body">
+                        ${message}
+                    </div>
+                </div>
+            `;
+            
+            toastContainer.innerHTML += toastHtml;
+            const toastElement = document.getElementById(toastId);
+            const toast = new bootstrap.Toast(toastElement, { delay: 3000 });
+            toast.show();
+            
+            // Remove the toast after it's hidden
+            toastElement.addEventListener('hidden.bs.toast', function() {
+                toastElement.remove();
+            });
+        }
     </script>
 </body>
 </html>
@@ -3330,6 +3494,82 @@ def hard_reset():
     except Exception as e:
         logger.error(f"Error in hard reset: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route("/api/file/upload", methods=["POST"])
+def api_file_upload():
+    """
+    Upload one or more .md files.
+    """
+    try:
+        if 'files' not in request.files:
+            return jsonify({"error": "No files provided"}), 400
+        
+        files = request.files.getlist('files')
+        if not files or all(file.filename == '' for file in files):
+            return jsonify({"error": "No files selected"}), 400
+        
+        uploaded_files = []
+        errors = []
+        
+        for file in files:
+            if file.filename == '':
+                continue
+                
+            # Check if it's a .md file
+            if not file.filename.lower().endswith('.md'):
+                errors.append(f"'{file.filename}' is not a .md file")
+                continue
+            
+            # Secure the filename
+            filename = secure_filename(file.filename)
+            
+            # Get the target directory from the request
+            target_dir = request.form.get('target_dir', '').strip()
+            
+            # Construct the full path
+            if target_dir:
+                rel_path = os.path.join(target_dir, filename).replace(os.sep, '/')
+            else:
+                rel_path = filename
+            
+            full_path = os.path.join(CONTENT_ROOT, rel_path)
+            
+            # Check if path is safe
+            if not is_safe_path(full_path):
+                errors.append(f"'{filename}' has an invalid path")
+                continue
+            
+            # Check if file already exists
+            if os.path.exists(full_path):
+                errors.append(f"'{filename}' already exists")
+                continue
+            
+            try:
+                # Ensure the directory exists
+                os.makedirs(os.path.dirname(full_path), exist_ok=True)
+                
+                # Save the file
+                file.save(full_path)
+                uploaded_files.append(rel_path)
+                
+                logger.info(f"Successfully uploaded file: {rel_path}")
+                
+            except Exception as e:
+                errors.append(f"Failed to save '{filename}': {str(e)}")
+        
+        # Refresh the file cache
+        if uploaded_files:
+            refresh_file_cache()
+        
+        return jsonify({
+            "success": True,
+            "uploaded_files": uploaded_files,
+            "errors": errors
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in file upload: {str(e)}")
+        return jsonify({"error": f"Upload failed: {str(e)}"}), 500
 
 # -------------------------------------------------------------------
 # Main entry point
