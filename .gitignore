@@ -92,5 +92,6 @@ venv.bak/
 .dmypy.json
 dmypy.json
 
-# Test documentation
+# Documentation folders
+docs/
 test_docs/
