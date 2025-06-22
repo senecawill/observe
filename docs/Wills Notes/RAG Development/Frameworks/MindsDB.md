@@ -1,1 +1,0 @@
-https://mindsdb.com/

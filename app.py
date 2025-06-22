@@ -1674,11 +1674,29 @@ html_template = """
             return false;
         }
         
+        // Add click handler for /view/ links
+        function setupLinkHandlers() {
+            // Add delegation for dynamically created links
+            document.addEventListener('click', function(e) {
+                const link = e.target.closest('a[href^="/view/"]');
+                if (link) {
+                    e.preventDefault();
+                    const href = link.getAttribute('href');
+                    const filePath = decodeURIComponent(href.substring(6)); // Remove '/view/'
+                    console.log('Intercepted link click for:', filePath);
+                    loadFile(filePath);
+                }
+            });
+        }
+
         // Initial load
         async function init() {
             console.log("init() function called");
             await fetchTree();
             console.log("fetchTree completed in init");
+            
+            // Setup link handlers
+            setupLinkHandlers();
             
             // Check if URL contains a file path
             if (!checkUrlForFilePath()) {
@@ -2977,26 +2995,43 @@ def api_file():
             flags=re.DOTALL
         )
 
-        # Process wiki-links
+        # Process wiki-links (avoid processing inside href attributes)
         html_content = re.sub(
             r'\[\[(.*?)\]\]',
             lambda m: f'<a href="#" class="wiki-link">{m.group(1)}</a>',
             html_content
         )
 
-        # Process tags
+        # First extract all href attributes to protect them from processing
+        href_placeholders = {}
+        href_pattern = r'href="([^"]*)"'
+        
+        def save_href(match):
+            href_content = match.group(1)
+            placeholder = f'HREF_PLACEHOLDER_{len(href_placeholders)}'
+            href_placeholders[placeholder] = href_content
+            return f'href="{placeholder}"'
+        
+        # Replace all href attributes with placeholders
+        html_content = re.sub(href_pattern, save_href, html_content)
+        
+        # Process tags (now safe from href content)
         html_content = re.sub(
             r'#(\w+)',
             lambda m: f'<span class="tag">#{m.group(1)}</span>',
             html_content
         )
 
-        # Process mentions
+        # Process mentions (now safe from href content)
         html_content = re.sub(
             r'@(\w+)',
             lambda m: f'<span class="mention">@{m.group(1)}</span>',
             html_content
         )
+        
+        # Restore href attributes
+        for placeholder, href_content in href_placeholders.items():
+            html_content = html_content.replace(f'href="{placeholder}"', f'href="{href_content}"')
 
         # Process callouts
         html_content = re.sub(
