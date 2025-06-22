@@ -2,6 +2,7 @@ import os
 import re
 import json
 import shutil
+import html
 from flask import Flask, request, jsonify, render_template_string, send_from_directory
 import markdown
 from markdown.extensions.codehilite import CodeHiliteExtension
@@ -2901,6 +2902,34 @@ def api_file():
             table_html = f'<table>\n<thead>\n{header_html}\n</thead>\n<tbody>\n{"".join(rows_html)}\n</tbody>\n</table>'
             return table_html
         
+        # Process relative links BEFORE markdown conversion
+        def process_relative_links_md(match):
+            link_text = match.group(1)
+            link_url = match.group(2)
+            
+            # If it's a relative link (not starting with http://, https://, or #)
+            if not (link_url.startswith('http://') or link_url.startswith('https://') or link_url.startswith('#')):
+                # Get the directory of the current file
+                current_dir = os.path.dirname(rel_path)
+                # Construct the full path relative to the current file
+                full_link_path = os.path.normpath(os.path.join(current_dir, link_url))
+                # Convert back to URL format
+                link_url = full_link_path.replace(os.sep, '/')
+                # Add .md extension if not present and not a directory
+                if not os.path.isdir(os.path.join(CONTENT_ROOT, full_link_path)) and not link_url.endswith('.md'):
+                    link_url += '.md'
+                # Convert to a URL that the app can handle
+                link_url = f'/view/{link_url}'
+            
+            return f'[{link_text}]({link_url})'
+
+        # Process markdown links before conversion
+        content = re.sub(
+            r'\[([^\]]+)\]\(([^)]+)\)',
+            process_relative_links_md,
+            content
+        )
+
         # Apply the pipe table conversion before markdown processing
         content = re.sub(pipe_table_pattern, convert_pipe_table_to_html, content, flags=re.MULTILINE)
 
@@ -2920,36 +2949,11 @@ def api_file():
             ],
         )
 
-        # Process relative links
-        def process_relative_links(match):
-            link_text = match.group(1)
-            link_url = match.group(2)
-            
-            # If it's a relative link (not starting with http://, https://, or #)
-            if not (link_url.startswith('http://') or link_url.startswith('https://') or link_url.startswith('#')):
-                # Get the directory of the current file
-                current_dir = os.path.dirname(rel_path)
-                # Construct the full path relative to the current file
-                full_link_path = os.path.normpath(os.path.join(current_dir, link_url))
-                # Convert back to URL format
-                link_url = full_link_path.replace(os.sep, '/')
-                # Add .md extension if not present and not a directory
-                if not os.path.isdir(os.path.join(CONTENT_ROOT, full_link_path)) and not link_url.endswith('.md'):
-                    link_url += '.md'
-            
-            return f'<a href="{link_url}" target="_blank">{link_text}</a>'
-
-        # Process markdown links
-        html_content = re.sub(
-            r'<a href="([^"]+)">([^<]+)</a>',
-            process_relative_links,
-            html_content
-        )
-
         # Restore code blocks
         for placeholder, (lang, code) in code_blocks.items():
             lang_attr = f' class="language-{lang}"' if lang else ''
-            code_html = f'<div class="codehilite"><pre><code{lang_attr}>{code}</code></pre></div>'
+            escaped_code = html.escape(code)
+            code_html = f'<div class="codehilite"><pre><code{lang_attr}>{escaped_code}</code></pre></div>'
             html_content = html_content.replace(placeholder, code_html)
 
         # Restore mermaid blocks
@@ -2960,7 +2964,7 @@ def api_file():
         # This handles cases where ```python or ```cpp blocks might not render correctly
         html_content = re.sub(
             r'<p>```(\w+)\s*(.*?)\s*```</p>',
-            lambda m: f'<div class="codehilite"><pre><code class="language-{m.group(1)}">{m.group(2)}</code></pre></div>',
+            lambda m: f'<div class="codehilite"><pre><code class="language-{m.group(1)}">{html.escape(m.group(2))}</code></pre></div>',
             html_content,
             flags=re.DOTALL
         )
@@ -2968,7 +2972,7 @@ def api_file():
         # Also handle plain fenced code blocks without language identifier
         html_content = re.sub(
             r'<p>```\s*(.*?)\s*```</p>',
-            lambda m: f'<div class="codehilite"><pre><code>{m.group(1)}</code></pre></div>',
+            lambda m: f'<div class="codehilite"><pre><code>{html.escape(m.group(1))}</code></pre></div>',
             html_content,
             flags=re.DOTALL
         )
@@ -3132,6 +3136,34 @@ def api_file_with_highlight():
         table_html = f'<table>\n<thead>\n{header_html}\n</thead>\n<tbody>\n{"".join(rows_html)}\n</tbody>\n</table>'
         return table_html
     
+    # Process relative links BEFORE markdown conversion
+    def process_relative_links_md(match):
+        link_text = match.group(1)
+        link_url = match.group(2)
+        
+        # If it's a relative link (not starting with http://, https://, or #)
+        if not (link_url.startswith('http://') or link_url.startswith('https://') or link_url.startswith('#')):
+            # Get the directory of the current file
+            current_dir = os.path.dirname(rel_path)
+            # Construct the full path relative to the current file
+            full_link_path = os.path.normpath(os.path.join(current_dir, link_url))
+            # Convert back to URL format
+            link_url = full_link_path.replace(os.sep, '/')
+            # Add .md extension if not present and not a directory
+            if not os.path.isdir(os.path.join(CONTENT_ROOT, full_link_path)) and not link_url.endswith('.md'):
+                link_url += '.md'
+            # Convert to a URL that the app can handle
+            link_url = f'/view/{link_url}'
+        
+        return f'[{link_text}]({link_url})'
+
+    # Process markdown links before conversion
+    highlight_content = re.sub(
+        r'\[([^\]]+)\]\(([^)]+)\)',
+        process_relative_links_md,
+        highlight_content
+    )
+
     # Apply the pipe table conversion before markdown processing
     highlight_content = re.sub(pipe_table_pattern, convert_pipe_table_to_html, highlight_content, flags=re.MULTILINE)
 
@@ -3150,7 +3182,8 @@ def api_file_with_highlight():
     # Restore code blocks
     for placeholder, (lang, code) in code_blocks.items():
         lang_attr = f' class="language-{lang}"' if lang else ''
-        code_html = f'<div class="codehilite"><pre><code{lang_attr}>{code}</code></pre></div>'
+        escaped_code = html.escape(code)
+        code_html = f'<div class="codehilite"><pre><code{lang_attr}>{escaped_code}</code></pre></div>'
         html_content = html_content.replace(placeholder, code_html)
 
     # Restore mermaid blocks
